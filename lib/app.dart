@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'state/providers.dart';
 import 'theme/tokens.dart';
 import 'theme/theme.dart';
+import 'ui/common/app_route.dart';
 import 'ui/onboarding/onboarding_gate.dart';
 import 'ui/shell/app_shell.dart';
 import 'ui/shell/profile/backup_restore_page.dart';
@@ -149,7 +150,7 @@ class _BootError extends StatelessWidget {
               ),
               onPressed: () async {
                 final restored = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute<bool>(
+                  AppPageRoute<bool>(
                     builder: (_) => const BackupRestorePage(),
                   ),
                 );

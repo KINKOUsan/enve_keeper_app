@@ -10,6 +10,7 @@ import '../../../domain/txn_filter.dart';
 import '../../../state/providers.dart';
 import '../../../theme/envelope_icons.dart';
 import '../../../theme/tokens.dart';
+import '../../common/app_route.dart';
 import '../../common/format.dart';
 import '../../copy.dart';
 import '../../overspend/fix_overspend_flow.dart';
@@ -346,7 +347,7 @@ class _RecordsPageState extends ConsumerState<RecordsPage> {
   // 进入交易详情
   void _showTxnDetail(Txn t) {
     Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => TxnDetailPage(txn: t)));
+        .push(AppPageRoute<void>(builder: (_) => TxnDetailPage(txn: t)));
   }
 }
 

@@ -10,6 +10,7 @@ import '../../../domain/period_logic.dart';
 import '../../../state/profile.dart';
 import '../../../state/providers.dart';
 import '../../../theme/tokens.dart';
+import '../../common/app_route.dart';
 import '../../common/format.dart';
 import '../../copy.dart';
 import '../../ledger/ledger_manage_page.dart';
@@ -153,14 +154,14 @@ class ProfilePage extends ConsumerWidget {
   void _openLedgers(BuildContext context) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const LedgerManagePage()));
+    ).push(AppPageRoute<void>(builder: (_) => const LedgerManagePage()));
   }
 
   // 进入预算周期设置页（v1.1.0）
   void _openPeriodSettings(BuildContext context) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const PeriodSettingsPage()));
+    ).push(AppPageRoute<void>(builder: (_) => const PeriodSettingsPage()));
   }
 
   // 编辑货币符号（v1.2.0 票 02 / ADR-0017）：对话框确认后写入当前账本设置行。
@@ -189,14 +190,14 @@ class ProfilePage extends ConsumerWidget {
   void _openEnvelopes(BuildContext context) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const EnvelopeManagePage()));
+    ).push(AppPageRoute<void>(builder: (_) => const EnvelopeManagePage()));
   }
 
   // 进入备份与恢复页
   void _openBackup(BuildContext context) {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute<bool>(builder: (_) => const BackupRestorePage()));
+    ).push(AppPageRoute<bool>(builder: (_) => const BackupRestorePage()));
   }
 
   // 版本行文案：包版本读出后显示 v x.y.z（与关于页同源，票 07）
@@ -208,7 +209,7 @@ class ProfilePage extends ConsumerWidget {
   // 进入关于页（票 07：反馈/许可收进关于页）
   void _openAbout(BuildContext context) {
     Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => const AboutPage()));
+        .push(AppPageRoute<void>(builder: (_) => const AboutPage()));
   }
 }
 
@@ -246,7 +247,7 @@ class _UserCard extends ConsumerWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const ProfileEditPage()),
+          AppPageRoute<void>(builder: (_) => const ProfileEditPage()),
         ),
         child: Row(
           children: [

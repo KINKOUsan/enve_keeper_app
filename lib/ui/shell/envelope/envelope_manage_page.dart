@@ -7,6 +7,7 @@ import '../../../domain/models.dart';
 import '../../../state/providers.dart';
 import '../../../theme/envelope_icons.dart';
 import '../../../theme/tokens.dart';
+import '../../common/app_route.dart';
 import '../../envelope/create_envelope_sheet.dart';
 import '../../envelope/envelope_edit_sheet.dart';
 import '../../envelope/envelope_detail_page.dart';
@@ -196,7 +197,7 @@ class _ManageRow extends ConsumerWidget {
       onTap: () {
         Navigator.of(context).pop(); // 退出管理页
         Navigator.of(context).push(
-          MaterialPageRoute<void>(
+          AppPageRoute<void>(
             builder: (_) => EnvelopeDetailPage(envelopeId: e.id),
           ),
         );

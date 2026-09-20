@@ -12,6 +12,7 @@ import '../../../domain/models.dart';
 import '../../../domain/period_logic.dart';
 import '../../../state/providers.dart';
 import '../../../theme/tokens.dart';
+import '../../common/app_route.dart';
 import '../../copy.dart';
 import '../../keypad/keypad_flow.dart';
 import '../../keypad/keypad_models.dart';
@@ -48,6 +49,12 @@ class _HomePageState extends ConsumerState<HomePage> {
   // 当前分页（内存态，不入库——ADR-0014）；0 起
   int _page = 0;
   final _pageController = PageController();
+
+  // 按压反馈状态（v1.2.x 票 01）：按下的信封 id / 待规划是否按下。
+  // 由裸 Listener 驱动（按下瞬间点亮，onTapDown 要等竞技场出结果做不到）；
+  // 拖拽会话开始时经 drag == null 同步收掉，让位拖拽视觉
+  String? _pressedEnvId;
+  bool _pressedBudget = false;
 
   // 落点带几何常量（与原型一致）：判定线 = 内容区底 −(56 导航条 + 12 外扩) = −68
   static const double _dropInset = 68;
@@ -120,9 +127,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _onEnvTap(String envId) async {
     if (!mounted) return;
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => EnvelopeDetailPage(envelopeId: envId),
-      ),
+      AppPageRoute<void>(builder: (_) => EnvelopeDetailPage(envelopeId: envId)),
     );
   }
 
@@ -144,9 +149,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   // 进入预算周期设置页（日期行整行可点，DESIGN.md §3 v1.1.0）
   void _openPeriodSettings(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const PeriodSettingsPage()));
+    Navigator.of(context)
+        .push(AppPageRoute<void>(builder: (_) => const PeriodSettingsPage()));
   }
 
   // ── 构建 ──
@@ -250,6 +254,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                     toBudget: toBudget,
                     symbol: symbol,
                     hideAmount: ref.read(hideToBudgetProvider),
+                    // 拖拽会话开始时收掉按压态，让位拖拽视觉（硬币/悬停）
+                    pressed: _pressedBudget && drag == null,
                   ),
                 ),
                 // 日期行：大字 + 周期区间 + 新增按钮
@@ -273,8 +279,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 physics: drag != null
                                     ? const NeverScrollableScrollPhysics()
                                     : const PageScrollPhysics(),
-                                // 翻页回调 → 重绘 + 同步命中注册表
-                                onPageChanged: (p) => setState(() => _page = p),
+                                // 翻页回调 → 重绘 + 同步命中注册表；
+                                // 翻页后原按压卡可能被回收，按压态一并收掉
+                                onPageChanged: (p) => setState(() {
+                                  _page = p;
+                                  _pressedEnvId = null;
+                                }),
                                 itemBuilder: (context, p) => _GridPage(
                                   envelopes: envelopes
                                       .skip(p * kEnvelopesPerPage)
@@ -310,9 +320,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
           // ── 覆盖层：硬币（拖拽跟手；铺满整层避免裁剪）──
           if (drag != null && dragLocal != null)
-            Positioned.fill(
-              child: _DragFollow(local: dragLocal),
-            ),
+            Positioned.fill(child: _DragFollow(local: dragLocal)),
         ],
       ),
     );
@@ -331,13 +339,24 @@ class _HomePageState extends ConsumerState<HomePage> {
         onPanUpdate: (d) => _controller.update(d.globalPosition),
         onPanCancel: _controller.cancel,
         onPanEnd: (_) => _handleDrop(_controller.end(dropY: _dropYGlobal())),
-        child: header,
+        // 按压反馈驱动（v1.2.x 票 01）：裸 Listener 不经手势竞技场，按下瞬间
+        // 即点亮（onTapDown 要等 ~100ms 超时/竞技场出结果，做不到「按下就有」）。
+        // 竞技场其他手势获胜时框架不给裸 Listener 补发合成 cancel（只在路由
+        // 弹出时补），按压态由 build 里的 drag 参数同步收掉（见调用处 pressed）
+        child: Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (_) => setState(() => _pressedBudget = true),
+          onPointerUp: (_) => setState(() => _pressedBudget = false),
+          onPointerCancel: (_) => setState(() => _pressedBudget = false),
+          child: header,
+        ),
       ),
     );
   }
 
   // 信封卡：点=详情 · 双击=记支出 · 长按=面板 · 拖=四向 + 手势状态透传 + 金额隐私（票 03）
-  // （onDoubleTap 与 onTap 共存时单击判定延迟约 300ms——双击判别的固有代价）
+  // （onDoubleTap 与 onTap 共存时单击判定延迟约 300ms——双击判别的固有代价；
+  //   按下即缩放的按压反馈负责补「马上有回应」，DESIGN.md §4 2026-09-20 增补）
   Widget _wrapEnvelope(Envelope e, DragSession? drag) {
     return KeyedSubtree(
       key: _controller.envKeys[e.id]!,
@@ -352,17 +371,32 @@ class _HomePageState extends ConsumerState<HomePage> {
         onPanUpdate: (d) => _controller.update(d.globalPosition),
         onPanCancel: _controller.cancel,
         onPanEnd: (_) => _handleDrop(_controller.end(dropY: _dropYGlobal())),
-        child: EnvelopeCard(
-          envelope: e,
-          // 方法在 build 之外：读快照即可——build 已 watch 这两个 provider，
-          // 符号变化/隐私开关翻转都会触发整页重建（票 03）
-          symbol: ref.read(currencySymbolProvider),
-          hideAmount: ref.read(hiddenEnvelopeIdsProvider).contains(e.id),
-          dimmed: drag?.kind == DragKind.env && drag?.envId == e.id,
-          hovered: drag?.hoverEnvId == e.id,
+        // 按压反馈驱动（v1.2.x 票 01）：裸 Listener 按下瞬间点亮、抬起即收；
+        // 拖拽会话开始时按压态经下方 pressed 的 drag == null 同步收掉
+        child: Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (_) => setState(() => _pressedEnvId = e.id),
+          onPointerUp: (_) => _clearPressed(e.id),
+          onPointerCancel: (_) => _clearPressed(e.id),
+          child: EnvelopeCard(
+            envelope: e,
+            // 方法在 build 之外：读快照即可——build 已 watch 这两个 provider，
+            // 符号变化/隐私开关翻转都会触发整页重建（票 03）
+            symbol: ref.read(currencySymbolProvider),
+            hideAmount: ref.read(hiddenEnvelopeIdsProvider).contains(e.id),
+            dimmed: drag?.kind == DragKind.env && drag?.envId == e.id,
+            hovered: drag?.hoverEnvId == e.id,
+            pressed: _pressedEnvId == e.id && drag == null,
+          ),
         ),
       ),
     );
+  }
+
+  // 松手收按压态：带 id 守卫——快速连点两卡时，先抬起的手不误清后按下的
+  void _clearPressed(String envId) {
+    if (_pressedEnvId != envId) return;
+    setState(() => _pressedEnvId = null);
   }
 
   void _showWip(BuildContext context) {

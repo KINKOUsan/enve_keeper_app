@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:enve_keeper_app/data/db/database.dart' as db;
 import 'package:enve_keeper_app/state/providers.dart';
+import 'package:enve_keeper_app/ui/shell/home/budget_arc_header.dart';
+import 'package:enve_keeper_app/ui/shell/home/envelope_card.dart';
 import 'package:enve_keeper_app/ui/shell/home/home_controller.dart';
 import 'package:enve_keeper_app/ui/shell/home/home_page.dart';
 import 'package:drift/native.dart';
@@ -113,6 +115,67 @@ void main() {
     expect(find.text('餐饮'), findsOneWidget);
     // 渲染过程中不允许任何异常（RenderFlex overflow 会以异常形式出现）
     expect(tester.takeException(), isNull);
+
+    await unmountTree(tester);
+  });
+
+  // v1.2.x 票 01：按压反馈接线——裸 Listener 按下瞬间点亮 0.97 缩放，
+  // 手势取消即恢复（取消而非抬起，避免触发双击判定的 300ms 等待计时器）
+  testWidgets('按压信封卡：按下即缩放 0.97，手势取消回 1.0', (tester) async {
+    final controller = HomeController();
+    await pumpHome(tester, controller);
+
+    AnimatedScale cardScale() => tester.widget<AnimatedScale>(
+      find
+          .descendant(
+            of: find.byType(EnvelopeCard),
+            matching: find.byType(AnimatedScale),
+          )
+          .first,
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(EnvelopeCard).first),
+    );
+    // 越过 100ms 缩放动画时长，落定在目标值
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(cardScale().scale, 0.97);
+
+    await gesture.cancel();
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(cardScale().scale, 1.0);
+
+    await unmountTree(tester);
+  });
+
+  // v1.2.x 票 01：待规划区按压反馈 + 拖拽会话开始时按压态让位拖拽视觉
+  testWidgets('按压待规划区：按下即缩放，拖出分配时收掉', (tester) async {
+    final controller = HomeController();
+    await pumpHome(tester, controller);
+
+    AnimatedScale budgetScale() => tester.widget<AnimatedScale>(
+      find
+          .descendant(
+            of: find.byType(BudgetArcHeader),
+            matching: find.byType(AnimatedScale),
+          )
+          .first,
+    );
+
+    final budgetCenter = tester.getCenter(find.byKey(controller.budgetKey));
+    final gesture = await tester.startGesture(budgetCenter);
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(budgetScale().scale, 0.97);
+
+    // 拖动越过阈值 → 拖拽会话开始，按压缩放收掉（源卡视觉交给拖拽层）
+    await gesture.moveBy(const Offset(0, 60));
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(controller.drag, isNotNull);
+    expect(budgetScale().scale, 1.0);
+
+    await gesture.up();
+    await tester.pump();
+    expect(controller.drag, isNull);
 
     await unmountTree(tester);
   });

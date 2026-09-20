@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/tokens.dart';
 import '../../common/format.dart';
+import 'envelope_card.dart' show kCardPressDuration, kCardPressScale;
 
 class BudgetArcHeader extends StatelessWidget {
   const BudgetArcHeader({
@@ -14,6 +15,7 @@ class BudgetArcHeader extends StatelessWidget {
     required this.toBudget,
     required this.symbol,
     this.hideAmount = false,
+    this.pressed = false,
   });
 
   final double toBudget;
@@ -23,6 +25,11 @@ class BudgetArcHeader extends StatelessWidget {
 
   // 金额隐私：隐藏数字（符号 + ••••），仅首页生效（v1.2.0 票 03）
   final bool hideAmount;
+
+  // 手指按下：内容块 0.97 缩放，抬起/手势取消即恢复（v1.2.x 票 01）。
+  // 只缩内容不缩整块弧形——整块缩放会让弧形边缘脱离屏幕边，露出一圈底色；
+  // 比例与时长用信封卡同款常量（DESIGN.md §4 是同一份规格）
+  final bool pressed;
 
   @override
   Widget build(BuildContext context) {
@@ -43,47 +50,54 @@ class BudgetArcHeader extends StatelessWidget {
         height: 148 + topInset,
         color: bg,
         padding: EdgeInsets.fromLTRB(16, 10 + topInset, 16, 26),
-        child: Column(
-          children: [
-            // 行一：左「待规划」+ 右「点击记一笔收入」
-            Row(
-              children: [
-                Text(
-                  '待规划',
-                  style: TextStyle(
-                    fontSize: T.typeBase,
-                    fontWeight: FontWeight.w500,
-                    color: labelColor,
+        // 按压反馈（DESIGN.md §4 2026-09-20 增补）：常驻 AnimatedScale，
+        // 松开靠参数变回 1.0 播放回弹，弧形背景不动、只缩内容块
+        child: AnimatedScale(
+          scale: pressed ? kCardPressScale : 1.0,
+          duration: kCardPressDuration,
+          curve: Curves.easeOut,
+          child: Column(
+            children: [
+              // 行一：左「待规划」+ 右「点击记一笔收入」
+              Row(
+                children: [
+                  Text(
+                    '待规划',
+                    style: TextStyle(
+                      fontSize: T.typeBase,
+                      fontWeight: FontWeight.w500,
+                      color: labelColor,
+                    ),
                   ),
-                ),
-                const Spacer(),
-                Text(
-                  '点击记一笔收入',
-                  style: TextStyle(fontSize: T.typeXs, color: hintColor),
-                ),
-              ],
-            ),
-            // 行二：32px Bold 金额（居中）；隐私开启时只显符号 + ••••（票 03）
-            Expanded(
-              child: Center(
-                child: Text(
-                  hideAmount
-                      ? moneyMasked(symbol: symbol)
-                      : '$symbol${money(toBudget)}',
-                  style: const TextStyle(
-                    fontSize: T.typeXxl,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
+                  const Spacer(),
+                  Text(
+                    '点击记一笔收入',
+                    style: TextStyle(fontSize: T.typeXs, color: hintColor),
+                  ),
+                ],
+              ),
+              // 行二：32px Bold 金额（居中）；隐私开启时只显符号 + ••••（票 03）
+              Expanded(
+                child: Center(
+                  child: Text(
+                    hideAmount
+                        ? moneyMasked(symbol: symbol)
+                        : '$symbol${money(toBudget)}',
+                    style: const TextStyle(
+                      fontSize: T.typeXxl,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ),
               ),
-            ),
-            // 行三：提示行（归零换文案）
-            Text(
-              zero ? '每一块钱都有去处了' : '拖到任意信封即可分配',
-              style: TextStyle(fontSize: T.typeXs, color: hintColor),
-            ),
-          ],
+              // 行三：提示行（归零换文案）
+              Text(
+                zero ? '每一块钱都有去处了' : '拖到任意信封即可分配',
+                style: TextStyle(fontSize: T.typeXs, color: hintColor),
+              ),
+            ],
+          ),
         ),
       ),
     );
