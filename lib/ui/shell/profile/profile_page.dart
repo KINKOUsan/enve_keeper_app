@@ -19,6 +19,7 @@ import 'backup_restore_page.dart';
 import 'csv_export.dart';
 import 'about_page.dart';
 import 'profile_edit_page.dart';
+import 'usage_guide_page.dart';
 import '../envelope/envelope_manage_page.dart';
 
 class ProfilePage extends ConsumerWidget {
@@ -136,6 +137,11 @@ class ProfilePage extends ConsumerWidget {
               title: '关于',
               rows: [
                 _RowData(
+                  icon: Icons.menu_book_outlined,
+                  label: '使用说明',
+                  onTap: () => _openUsageGuide(context),
+                ),
+                _RowData(
                   icon: Icons.info_outline,
                   label: '关于金打细算',
                   // 版本号与关于页同源（packageInfoProvider），读取中暂不显示
@@ -210,6 +216,12 @@ class ProfilePage extends ConsumerWidget {
   void _openAbout(BuildContext context) {
     Navigator.of(context)
         .push(AppPageRoute<void>(builder: (_) => const AboutPage()));
+  }
+
+  // 进入使用说明页（v1.2.x 票 04：README「使用说明」节的 App 内重排）
+  void _openUsageGuide(BuildContext context) {
+    Navigator.of(context)
+        .push(AppPageRoute<void>(builder: (_) => const UsageGuidePage()));
   }
 }
 

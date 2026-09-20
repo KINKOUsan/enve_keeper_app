@@ -52,3 +52,10 @@ flutter:
     - assets/logo_icon.png
     - assets/coin.png
     - assets/avatar.jpg
+    # 使用说明页演示动图/图（v1.2.x 票 04）：README 四张 GIF 压缩版
+    # （320px/降帧/调色板，约 5MB→2MB）+ 预算周期示意，原素材保留在 assets/ 根
+    - assets/guide/income.gif
+    - assets/guide/allocate.gif
+    - assets/guide/spend.gif
+    - assets/guide/transfer.gif
+    - assets/guide/period.png

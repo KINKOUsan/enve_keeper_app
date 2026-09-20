@@ -2,14 +2,14 @@
 // App 图标 + 名称「金打细算」+ 版本号（packageInfoProvider 动态读取）；
 // 作者卡片 = GitHub 头像（本地资产 assets/avatar.jpg，票 10——GitHub CDN 国内
 // 不可达，头像更换后手动重新下载覆盖资产文件）+ @KINKOUsan，点按卡片与
-// 「意见反馈」均跳 GitHub 主页（url_launcher 外部浏览器）；「开源许可」= LicensePage。
+// 「意见反馈」均跳 GitHub 主页（external_link 外部浏览器 + toast 兜底）；
+// 「开源许可」= LicensePage。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../state/providers.dart';
 import '../../../theme/tokens.dart';
-import '../../keypad/keypad_flow.dart';
+import '../../common/external_link.dart';
 
 // 作者 GitHub 主页：「意见反馈」跳同一地址
 const kGitHubHome = 'https://github.com/KINKOUsan';
@@ -66,23 +66,9 @@ class AboutPage extends ConsumerWidget {
     );
   }
 
-  // 打开 GitHub 主页（外部浏览器）；失败时 toast 提示手动访问
-  Future<void> _openGitHubHome(BuildContext context) async {
-    try {
-      final ok = await launchUrl(
-        Uri.parse(kGitHubHome),
-        mode: LaunchMode.externalApplication,
-      );
-      if (!ok && context.mounted) {
-        appToast(context, '没能打开浏览器，请手动访问 $kGitHubHome');
-      }
-    } catch (_) {
-      // 设备无浏览器等平台异常：同样给出手动访问提示
-      if (context.mounted) {
-        appToast(context, '没能打开浏览器，请手动访问 $kGitHubHome');
-      }
-    }
-  }
+  // 打开 GitHub 主页（外链助手：外部浏览器 + toast 兜底）
+  Future<void> _openGitHubHome(BuildContext context) =>
+      openExternalLink(context, kGitHubHome);
 
   // 打开 Flutter 开源许可页
   void _showLicenses(BuildContext context, String? version) {

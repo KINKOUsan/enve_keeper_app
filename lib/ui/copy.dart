@@ -371,3 +371,77 @@ const currencyTooLongHint = '去掉首尾空格后最多 3 个字符';
 
 // 保存成功 toast
 const currencySavedToast = '货币符号已更新';
+
+// ── 使用说明页（DESIGN.md §9 · v1.2.x 票 04 · README「使用说明」节）────
+// README 更新后需手动同步以下文案（拷问决策 2026-09-20：手写静态页，不引 markdown 渲染包）
+
+// 信封预算法参考文章（sspai，App 内可点跳外部浏览器）
+const kEnvelopeBudgetArticleUrl = 'https://sspai.com/post/61367';
+const guideArticleLinkLabel = '摆脱超支困境，试试用这套「信封预算法」记账吧';
+
+// 开篇卡正文
+const guideEnvelopeIntroBody =
+    '把收入先分进一个个「信封」，花销只从对应信封里出——这就是「信封预算法」。'
+    '它让你只需要盯着自己手头的钱，新的收入也不容易打乱原来的预算。';
+
+// 外链卡正文
+const guideArticleIntroBody =
+    '有关概念的讲解，少数派的这篇文章已经写得很详细，本项目的灵感也来自它——'
+    '没接触过信封预算法的话，建议先读一读再回来上手。';
+
+// 「让每一块钱都有分工」卡正文
+const guideAllocationBody =
+    '手头的钱和之后的收入，都先记进「待规划」，再把钱分配进各个信封；'
+    '消费时从对应的信封里扣。这样你只需要专注手头的钱，不必被账户细分搅乱。';
+
+// 三个操作步骤的说明（配 GIF 演示）
+const guideStepIncomeDesc = '点首页顶部的「待规划」区域，输入金额，记一笔收入。';
+const guideStepAllocateDesc = '按住「待规划」拖到信封上松手，输入金额，完成分配。';
+const guideStepSpendDesc = '按住信封往下拖到底（或双击信封），输入金额，记录支出。';
+const guideStepTransferDesc = '按住一个信封拖到另一个信封，完成预算转移。';
+
+// 「信封的作用」卡正文
+const guideEnvelopeRoleBody =
+    '信封大致对应其他记账软件里的「账户」（微信钱包、支付宝、储蓄卡……）——'
+    '但我们不提倡细分账户：所有手头的钱，都一并视为可以支配的钱。'
+    '信封的价值是做灵活的预算，帮你厘清每笔钱的用处，尽量避免在某方面超支。';
+
+// 信封优先级示例
+const guideEnvelopePriorityBody =
+    '可以试着给信封排个优先级，比如：当月刚需支出 > 时间不确定的重要支出 > '
+    '娱乐支出 > 存款（仅供参考，按个人需求设定）。';
+
+// 「灵活调整」卡正文
+const guideFlexAdjustBody =
+    '预算没有封口，随时可调。某项预算花超了（比如冲动消费），或高估了'
+    '（比如划了 100 给交通却压根没出门），都可以临时把钱从一个信封转到另一个——'
+    '让你时刻盯着预算，清楚接下来的消费要怎么调整。';
+
+// 透支说明
+const guideOverdraftBody =
+    '信封允许透支（金额可以小于 0）。有信封透支时会有醒目提醒，促使你尽快补上。';
+
+// 「预算周期与结转」卡正文
+const guidePeriodBody =
+    '预算周期是分配的有效时间区间。默认每个自然月 1 日开启新一期；'
+    '也支持自定义起始日、以周为周期（从周一开始），或由你手动结束的自由周期。'
+    '周期内分进信封的钱会累加为「已规划」，进信封详情页可见。';
+
+// 进度条含义（README 的 LaTeX 公式改写成人话，票 04）
+const guideProgressbarBody =
+    '信封上的进度条，显示的是这个信封还剩几成预算：从已规划里扣掉已花掉的，'
+    '剩下的就是还在信封里的部分。';
+
+const guideCarryoverBody =
+    '每个信封可以单独设定是否结转：开启时，周期结束后的剩余预算带入下一期；'
+    '关闭时，剩余预算退回「待规划」。无论开关，透支都会延续到下一期。';
+
+// 「数据安全」卡两条
+const guidePrivacyBody =
+    '可以按信封单独隐藏金额（信封详情页内设置）；「待规划」的金额在「我的」页设置是否隐藏。';
+const guideDataSafetyBody =
+    'App 没有任何网络连接，数据都在你的设备上，需要你自主备份管理；'
+    '开发者不会获取你的任何数据。';
+
+// 外链打不开的 toast 兜底（关于页/使用说明页共用）
+String linkOpenFailedToast(String url) => '没能打开浏览器，请手动访问 $url';
