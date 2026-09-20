@@ -2,6 +2,7 @@
 // .jx = JSON 全量导出（含全部账本，ADR-0011）；本地保留最近 5 份，
 // 另可导出到用户自选位置（换机）与从外部文件恢复（清数据/换机回导）。
 // 恢复确认必须把「会丢什么」算出来；恢复中不可取消；失败时保证当前数据未被改动。
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -164,20 +165,33 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
       ),
     );
     if (ok != true) return;
+    if (!mounted) return;
 
-    // 第 4 步：恢复中，不可取消（写一半的库没法回滚）
-    _showRestoringDialog();
-    String? failure;
+    // 第 4 步：恢复中，不可取消（写一半的库没法回滚）；文件先读出来，
+    // 读不出来直接走失败框（不闪恢复中）
+    String raw;
     try {
-      final raw = await File(path).readAsString();
-      await repo.restoreFromJson(raw);
-    } on BackupRestoreException catch (e) {
-      failure = e.message;
+      raw = await File(path).readAsString();
     } on Exception {
-      failure = restoreCorruptBody;
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('恢复失败'),
+          content: const Text(restoreCorruptBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('知道了'),
+            ),
+          ],
+        ),
+      );
+      return;
     }
     if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop(); // 关掉「恢复中」
+    final failure = await runCoverRestore(context, repo, raw);
+    if (!mounted) return;
 
     // 第 5/6 步：完成或失败（failure 局部提升为非空 String）
     final String? failureMsg = failure;
@@ -210,30 +224,6 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
     final path = result?.files.single.path;
     if (path == null || !mounted) return;
     await _restoreFromFile(path, _timeLabel(File(path).lastModifiedSync()));
-  }
-
-  // 「恢复中」对话框——不可取消（§19：给取消等于给一个会毁数据的开关）
-  void _showRestoringDialog() {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const PopScope(
-        canPop: false,
-        child: Dialog(
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('正在恢复…'),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   // 行首时间标签：今天 18:40 / 9月14日 09:30（顶层函数，自动备份卡共用）
@@ -419,6 +409,55 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
 }
 
 // ── 小组件 ──────────────────────────────────
+
+/// 「恢复中」对话框——不可取消（§19：给取消等于给一个会毁数据的开关）。
+/// 备份页与启动时的重装找回（app.dart）共用；关闭走 [runCoverRestore]。
+Future<void> showRestoringDialog(BuildContext context) {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => const PopScope(
+      canPop: false,
+      child: Dialog(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('正在恢复…'),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// 覆盖恢复核心（§19 步骤 4）：「恢复中」不可取消 → restoreFromJson → 关掉对话框。
+/// 返回失败文案（null = 成功）；失败时库未被改动（restoreFromJson 单事务）。
+/// 备份页与启动时的重装找回（app.dart）共用。rootNavigator 在恢复前先取好，
+/// 页面即使中途退场也能关掉「恢复中」。
+Future<String?> runCoverRestore(
+  BuildContext context,
+  AppRepository repo,
+  String raw,
+) async {
+  final rootNavigator = Navigator.of(context, rootNavigator: true);
+  // 「恢复中」不 await：它的 Future 要等对话框被关掉才完成，await 会死锁
+  unawaited(showRestoringDialog(context));
+  String? failure;
+  try {
+    await repo.restoreFromJson(raw);
+  } on BackupRestoreException catch (e) {
+    failure = e.message;
+  } on Exception {
+    failure = restoreCorruptBody;
+  }
+  rootNavigator.pop();
+  return failure;
+}
 
 /// 行首/状态行时间标签：今天 18:40 / 9月14日 09:30（备份行与自动备份卡共用）
 String formatBackupTimeLabel(DateTime t) {

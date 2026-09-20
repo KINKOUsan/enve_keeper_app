@@ -25,7 +25,11 @@ class AutoBackupWriteResult {
 
 /// 自动备份写入器：平台分流（MediaStore / 本地文件），失败向上抛、由控制器静默。
 class AutoBackupStore {
-  AutoBackupStore();
+  // 文档目录解析器（测试注入临时目录用，生产 = path_provider）
+  AutoBackupStore({Future<Directory> Function()? docsDirectory})
+    : _docsDirectory = docsDirectory ?? getApplicationDocumentsDirectory;
+
+  final Future<Directory> Function() _docsDirectory;
 
   static const _channel = MethodChannel('enve_keeper_app/autobackup');
 
@@ -48,7 +52,7 @@ class AutoBackupStore {
         // 引擎不可用（如测试环境）：同样降级
       }
     }
-    final docs = await getApplicationDocumentsDirectory();
+    final docs = await _docsDirectory();
     final dir = Directory(
       '${docs.path}${Platform.pathSeparator}$kAutoBackupDirName',
     );
@@ -58,5 +62,36 @@ class AutoBackupStore {
     );
     await file.writeAsString(json, flush: true);
     return const AutoBackupWriteResult(publicTarget: false);
+  }
+
+  /// 读自动备份内容（v1.2.x 票 03 重装找回）：公共目录（Android API 29+ 经
+  /// MediaStore）或降级档沙盒单文件。找不到、通道异常、属主丢失被系统拒读
+  /// 都返回 null——调用方与「无文件」同路径当无事发生，备份页「从文件恢复」
+  /// 永远兜底。
+  Future<String?> read() async {
+    if (Platform.isAndroid) {
+      // MediaStore 读不到（未命中属主校验等）返回 null → 继续试私有目录，
+      // 与 write 的降级链对称
+      try {
+        final bytes = await _channel.invokeMethod<Uint8List>('readAutoBackup', {
+          'subdir': kAutoBackupDirName,
+          'fileName': kAutoBackupFileName,
+        });
+        if (bytes != null) return utf8.decode(bytes);
+      } on Exception {
+        // 通道异常 / 引擎不可用（测试环境）：降级读私有目录
+      }
+    }
+    try {
+      final docs = await _docsDirectory();
+      final file = File(
+        '${docs.path}${Platform.pathSeparator}$kAutoBackupDirName'
+        '${Platform.pathSeparator}$kAutoBackupFileName',
+      );
+      if (file.existsSync()) return await file.readAsString();
+    } on Exception {
+      // 读不了（无文件/无权限）= 无事发生
+    }
+    return null;
   }
 }

@@ -306,6 +306,17 @@ String autoBackupStatusFailure(String timeLabel) =>
 const autoBackupLocationPublic = '位置：下载/金打细算/金打细算-自动备份.jx（卸载重装仍保留）';
 const autoBackupLocationSandbox = '位置：应用沙盒内单文件（卸载后不保留）';
 
+// ── 重装找回自动备份（DESIGN.md §19 · v1.2.x 票 03 · ADR-0018）────
+
+// 「发现自动备份」确认框标题
+const autoBackupFoundTitle = '发现自动备份';
+
+// 确认框正文：备份时间 + 数量摘要。检测只看文件是否存在，
+// 这份文件是不是用户自己的旧备份，留给用户凭摘要自行判断
+String autoBackupFoundBody(String timeLabel, int ledgers, int envelopes, int txns) =>
+    '发现 $timeLabel 的自动备份：$ledgers 个账本 · $envelopes 个信封 · '
+    '$txns 笔流水。恢复会用这份备份覆盖当前数据，完成后直接进入主界面。';
+
 // ── 统计页（DESIGN.md §8/§21 · v1.2.0 票 07）────
 
 // 区间胶囊「编辑」底部弹层

@@ -133,6 +133,25 @@ class AppRepository {
     )..where((l) => l.id.equals(id))).getSingleOrNull();
   }
 
+  /// 账本是否还是初始空账（无信封且无流水）——重装找回自动备份的检测条件
+  /// （v1.2.x 票 03）。引导第 1 屏录了收入但没走完的账本不算空，不弹找回框。
+  Future<bool> isLedgerEmpty(String ledgerId) async {
+    final envelopes = _db.envelopes.id.count();
+    final envRow = await (_db.selectOnly(
+      _db.envelopes,
+    )..addColumns([envelopes])
+          ..where(_db.envelopes.ledgerId.equals(ledgerId)))
+        .getSingle();
+    if ((envRow.read(envelopes) ?? 0) > 0) return false;
+    final txns = _db.transactions.id.count();
+    final txnRow = await (_db.selectOnly(
+      _db.transactions,
+    )..addColumns([txns])
+          ..where(_db.transactions.ledgerId.equals(ledgerId)))
+        .getSingle();
+    return (txnRow.read(txns) ?? 0) == 0;
+  }
+
   // ── 信封 ───────────────────────────────────
 
   /// 监听某账本**在用**的信封（按 sortOrder 稳定排序；停用的不出现，ADR-0012）

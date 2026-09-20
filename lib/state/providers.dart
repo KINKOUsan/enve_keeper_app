@@ -21,6 +21,9 @@ final prefsProvider = Provider<SharedPreferences>(
   (ref) => throw UnimplementedError('main 中覆写'),
 );
 
+// 激活账本 id 的持久化键（app.dart 重装找回的首启判定也读它，票 03）
+const kActiveLedgerIdKey = 'activeLedgerId';
+
 // 应用仓库
 final repoProvider = Provider<AppRepository>(
   (ref) => AppRepository(ref.watch(dbProvider)),
@@ -29,12 +32,12 @@ final repoProvider = Provider<AppRepository>(
 // 激活账本 id（SharedPreferences 持久化）
 class ActiveLedgerId extends Notifier<String?> {
   @override
-  String? build() => ref.watch(prefsProvider).getString('activeLedgerId');
+  String? build() => ref.watch(prefsProvider).getString(kActiveLedgerIdKey);
 
   // 切换账本
   Future<void> set(String id) async {
     state = id;
-    await ref.watch(prefsProvider).setString('activeLedgerId', id);
+    await ref.watch(prefsProvider).setString(kActiveLedgerIdKey, id);
   }
 }
 

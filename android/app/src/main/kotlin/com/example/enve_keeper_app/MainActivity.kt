@@ -31,16 +31,48 @@ class MainActivity : FlutterActivity() {
                             runOnUiThread { result.success(written) }
                         }.start()
                     }
+                    "readAutoBackup" -> {
+                        val subdir = call.argument<String>("subdir") ?: "金打细算"
+                        val fileName = call.argument<String>("fileName") ?: "金打细算-自动备份.jx"
+                        Thread {
+                            val bytes = readFromDownloads(applicationContext, subdir, fileName)
+                            runOnUiThread { result.success(bytes) }
+                        }.start()
+                    }
                     else -> result.notImplemented()
                 }
             }
     }
 
     /**
+     * 在 Download/<subdir>/ 里按文件名查找，命中返回内容 Uri，未命中返回 null。
+     * 29+ 的查询只返回本应用可见的文件（重装后属主是否可见因系统版本而异，票 03）。
+     */
+    private fun findInDownloads(
+        context: Context,
+        subdir: String,
+        fileName: String,
+    ): Uri? {
+        val resolver = context.contentResolver
+        val relPath = "Download/$subdir/"
+        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        resolver.query(
+            collection,
+            arrayOf(MediaStore.MediaColumns._ID),
+            "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+            arrayOf(relPath, fileName),
+            null,
+        )?.use { c ->
+            if (c.moveToFirst()) return ContentUris.withAppendedId(collection, c.getLong(0))
+        }
+        return null
+    }
+
+    /**
      * 单文件覆盖写 Download/<subdir>/<fileName>（MediaStore，API 29+，无需存储权限）。
      * 返回是否写入成功；API<29（旧版无权限写不了公共目录）或任何失败返回 false，
-     * Dart 侧降级为应用私有目录单文件。29+ 的查询只返回本应用可见的
-     * 文件，命中即原地覆写；未命中走 IS_PENDING 插入（写完再发布），失败删掉半成品。
+     * Dart 侧降级为应用私有目录单文件。命中即原地覆写；未命中走 IS_PENDING 插入
+     * （写完再发布），失败删掉半成品。
      */
     private fun writeToDownloads(
         context: Context,
@@ -51,29 +83,17 @@ class MainActivity : FlutterActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         return try {
             val resolver = context.contentResolver
-            val relPath = "Download/$subdir/"
-            val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-            var existing: Uri? = null
-            resolver.query(
-                collection,
-                arrayOf(MediaStore.MediaColumns._ID),
-                "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?",
-                arrayOf(relPath, fileName),
-                null,
-            )?.use { c ->
-                if (c.moveToFirst()) existing = ContentUris.withAppendedId(collection, c.getLong(0))
-            }
-            val target = existing
+            val target = findInDownloads(context, subdir, fileName)
             if (target != null) {
                 // 单文件覆盖：原地截断重写，不产生第二个文件
                 resolver.openOutputStream(target, "wt")?.use { it.write(bytes) } ?: return false
             } else {
                 val draft = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, relPath)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/$subdir/")
                     put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }
-                val uri = resolver.insert(collection, draft) ?: return false
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, draft) ?: return false
                 // 打不开流也算失败：先把半成品删掉再返回（不能靠 catch，return 不触发它）
                 val stream = resolver.openOutputStream(uri)
                 if (stream == null) {
@@ -92,6 +112,25 @@ class MainActivity : FlutterActivity() {
             true
         } catch (e: Exception) {
             false
+        }
+    }
+
+    /**
+     * 读 Download/<subdir>/<fileName>（MediaStore，API 29+）——重装找回（票 03）。
+     * 重装后文件属主丢失，部分系统版本会拒绝读取：未命中、打不开流、读异常
+     * 一律返回 null，Dart 侧与「无文件」同路径静默降级，备份页「从文件恢复」兜底。
+     */
+    private fun readFromDownloads(
+        context: Context,
+        subdir: String,
+        fileName: String,
+    ): ByteArray? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        return try {
+            val uri = findInDownloads(context, subdir, fileName) ?: return null
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        } catch (e: Exception) {
+            null
         }
     }
 }
