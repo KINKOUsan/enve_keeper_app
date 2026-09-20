@@ -702,6 +702,21 @@ class AppRepository {
     return true;
   }
 
+  // ── 数据变动信号（自动备份的触发源，v1.2.x 票 02 · ADR-0018）──────
+
+  /// 监听全库数据变动（账本/信封/流水/设置四表）。drift 按事务提交原子通知：
+  /// 一次编辑交易（撤旧 + 记新）只产生一次事件——自动备份防抖以此为「一次变动」。
+  Stream<Set<TableUpdate>> watchDataChanges() {
+    return _db.tableUpdates(
+      TableUpdateQuery.onAllTables([
+        _db.ledgers,
+        _db.envelopes,
+        _db.transactions,
+        _db.appSettings,
+      ]),
+    );
+  }
+
   // ── 备份与恢复（.jx = JSON 全量导出，ADR-0011：覆盖全部账本）───────
 
   /// 导出全部账本数据为 .jx 内容（JSON 字符串，含 schemaVersion 供恢复时校验）

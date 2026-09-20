@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 
 import '../../../data/app_repository.dart';
 import '../../../data/backup_store.dart';
+import '../../../state/auto_backup.dart';
 import '../../../state/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../copy.dart';
@@ -235,14 +236,8 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
     );
   }
 
-  // 行首时间标签：今天 18:40 / 9月14日 09:30
-  String _timeLabel(DateTime t) {
-    final now = DateTime.now();
-    final hhmm = DateFormat('HH:mm').format(t);
-    final sameDay =
-        t.year == now.year && t.month == now.month && t.day == now.day;
-    return sameDay ? '今天 $hhmm' : '${t.month}月${t.day}日 $hhmm';
-  }
+  // 行首时间标签：今天 18:40 / 9月14日 09:30（顶层函数，自动备份卡共用）
+  String _timeLabel(DateTime t) => formatBackupTimeLabel(t);
 
   // 大小文案：<1MB 显示 KB，否则 MB
   String _sizeLabel(int bytes) {
@@ -320,6 +315,9 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            // 自动备份卡（v1.2.x 票 02 · §19）：开关 + 状态行
+            const _AutoBackupCard(),
             const SizedBox(height: 20),
             // 分区标题
             Padding(
@@ -421,6 +419,137 @@ class _BackupRestorePageState extends ConsumerState<BackupRestorePage> {
 }
 
 // ── 小组件 ──────────────────────────────────
+
+/// 行首/状态行时间标签：今天 18:40 / 9月14日 09:30（备份行与自动备份卡共用）
+String formatBackupTimeLabel(DateTime t) {
+  final now = DateTime.now();
+  final hhmm = DateFormat('HH:mm').format(t);
+  final sameDay =
+      t.year == now.year && t.month == now.month && t.day == now.day;
+  return sameDay ? '今天 $hhmm' : '${t.month}月${t.day}日 $hhmm';
+}
+
+/// 自动备份卡（v1.2.x 票 02 · ADR-0018 · §19）：开关行 + 两行状态小字。
+/// 开关默认开、不进 .jx（恢复旧备份不翻转）；失败静默，状态行反映最近一次结果；
+/// 位置固定、单文件覆盖——公共目录（下载/金打细算/）或沙盒降级两档文案。
+class _AutoBackupCard extends ConsumerWidget {
+  const _AutoBackupCard();
+
+  // 状态行小字样式（11 Regular 暖灰）
+  static const _statusStyle = TextStyle(
+    fontSize: T.typeXs,
+    color: T.textTertiary,
+  );
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(autoBackupProvider);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: T.spaceLg),
+      decoration: BoxDecoration(
+        color: T.surface,
+        borderRadius: BorderRadius.circular(T.radiusCard),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F6B5738),
+            offset: Offset(0, 3),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 开关行：图标块 + 标题/副行 + Switch（整行可点）
+          InkWell(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(T.radiusCard),
+            ),
+            onTap: () => ref
+                .read(autoBackupProvider.notifier)
+                .setEnabled(!status.enabled),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: T.surfaceSubtle,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.autorenew_rounded,
+                      size: 18,
+                      color: Color(0xFF6E675C),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '自动备份',
+                          style: TextStyle(
+                            fontSize: T.typeBase,
+                            fontWeight: FontWeight.w500,
+                            color: T.textPrimary,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          autoBackupSwitchSubtitle,
+                          style: TextStyle(
+                            fontSize: T.typeXs,
+                            color: T.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: status.enabled,
+                    onChanged: (v) =>
+                        ref.read(autoBackupProvider.notifier).setEnabled(v),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // 状态行：最近一次结果 + 固定位置（单文件覆盖）
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_statusLabel(status), style: _statusStyle),
+                const SizedBox(height: 2),
+                Text(
+                  status.publicTarget
+                      ? autoBackupLocationPublic
+                      : autoBackupLocationSandbox,
+                  style: _statusStyle,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 最近一次结果：失败晚于成功显示失败，否则显示上次成功，从未写过显示引导
+  String _statusLabel(AutoBackupState s) {
+    if (s.lastAttemptFailed) {
+      return autoBackupStatusFailure(formatBackupTimeLabel(s.lastFailureAt!));
+    }
+    final ok = s.lastSuccessAt;
+    if (ok != null) return autoBackupStatusSuccess(formatBackupTimeLabel(ok));
+    return autoBackupStatusNever;
+  }
+}
 
 /// 备份行（高 56）：36dp 圆角图标块 + 两行文字 + 右箭头（§19）
 class _BackupRow extends StatelessWidget {

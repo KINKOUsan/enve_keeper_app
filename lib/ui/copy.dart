@@ -290,6 +290,22 @@ String toastBackupLocalExportFailed(Object error) => '已备份到本地；导�
 const toastCsvEmpty = '当前账本还没有流水，没什么可导出的';
 const toastExportCancelled = '导出已取消';
 
+// ── 自动备份（DESIGN.md §19 · v1.2.x 票 02 · ADR-0018）────
+
+// 开关行副标签
+const autoBackupSwitchSubtitle = '数据变动后约 3 秒自动备份';
+
+// 状态行第一行：最近一次结果（失败静默，只反映在这里）
+const autoBackupStatusNever = '尚未生成 · 有数据变动时会自动备份';
+String autoBackupStatusSuccess(String timeLabel) => '上次自动备份 · $timeLabel';
+String autoBackupStatusFailure(String timeLabel) =>
+    '上次尝试失败，下次变动时会重试 · $timeLabel';
+
+// 状态行第二行：固定位置。公共目录（Android 下载）卸载重装仍在；
+// 沙盒（iOS / 低版本 Android 降级）不承诺卸载可恢复，文案如实说明
+const autoBackupLocationPublic = '位置：下载/金打细算/金打细算-自动备份.jx（卸载重装仍保留）';
+const autoBackupLocationSandbox = '位置：应用沙盒内单文件（卸载后不保留）';
+
 // ── 统计页（DESIGN.md §8/§21 · v1.2.0 票 07）────
 
 // 区间胶囊「编辑」底部弹层

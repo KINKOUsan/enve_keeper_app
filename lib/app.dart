@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'state/providers.dart';
+import 'state/auto_backup.dart';
 import 'theme/tokens.dart';
 import 'theme/theme.dart';
 import 'ui/common/app_route.dart';
@@ -72,6 +73,9 @@ class _BootState extends ConsumerState<_Boot> {
 
   @override
   Widget build(BuildContext context) {
+    // 自动备份常驻：从启动即 watch，让控制器与生命周期监听全应用存活
+    // （v1.2.x 票 02 · ADR-0018）
+    ref.watch(autoBackupProvider);
     final ledger = ref.watch(activeLedgerProvider);
     if (_error != null) {
       // 数据异常全屏错误（DESIGN.md §18）
