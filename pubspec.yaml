@@ -1,0 +1,54 @@
+name: enve_keeper_app
+description: "金打细算 — 信封记账 App"
+publish_to: 'none'
+version: 1.2.0+3
+
+environment:
+  sdk: ^3.13.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # 日期选择器等框架组件的中文本地化
+  flutter_localizations:
+    sdk: flutter
+  # 状态管理
+  flutter_riverpod: ^3.0.0
+  # 本地存储（drift/SQLite，按自然月查询统计）
+  drift: ^2.30.0
+  drift_flutter: ^0.2.0
+  sqlite3_flutter_libs: ^0.5.0
+  path_provider: ^2.1.0
+  shared_preferences: ^2.3.0
+  # 备份/恢复/CSV 的文件选择与保存（SAF，无需存储权限）
+  file_picker: ^10.0.0
+  # 金额/日期格式化
+  intl: ^0.20.0
+  url_launcher: ^6.3.2
+  package_info_plus: ^9.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.30.0
+  build_runner: ^2.4.0
+  # 启动图标资产生成（tool/gen_icons.dart 一次性脚本用）
+  image: ^4.5.0
+
+# 临时覆盖：objective_c 9.3+ 的 native build hook 用了 Flutter 3.47 已移除的
+# Architecture.arm64e，导致 Android 构建也失败；钉在最后一个不用它的版本。
+dependency_overrides:
+  objective_c: 9.2.5
+
+flutter:
+  uses-material-design: true
+  # 应用 logo 方格图（根 logo.svg 的栅格化形态，gen_icons 产出）与
+  # 不透明方格 App 图标（关于页顶部，票 07；v1.2.0 票 09 起以 logo.svg 为源）
+  # 硬币贴图（拖拽跟随层，512×512 透明底，按 40dp 渲染，票 06）
+  # 作者 GitHub 头像（关于页本地资产，票 10）
+  assets:
+    - assets/logo.png
+    - assets/logo_icon.png
+    - assets/coin.png
+    - assets/avatar.jpg
