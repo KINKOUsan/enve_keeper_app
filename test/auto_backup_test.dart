@@ -17,11 +17,14 @@ import 'package:enve_keeper_app/domain/models.dart';
 import 'package:enve_keeper_app/state/auto_backup.dart';
 import 'package:enve_keeper_app/state/providers.dart';
 
-// 假写入器：记录写入内容，可注入失败；gate 非空时挂起写入（编排并发用例）
+// 假写入器：记录写入内容，可注入失败；gate 非空时挂起写入（编排并发用例）；
+// stat 可注入文件还原结果（票 02 修复：状态行启动时从文件还原）
 class _FakeStore extends AutoBackupStore {
   final writes = <String>[];
   Exception? failure;
   Completer<void>? gate;
+  AutoBackupFileStat? statResult;
+  Completer<void>? statGate;
 
   @override
   Future<AutoBackupWriteResult> write(String json) async {
@@ -32,6 +35,13 @@ class _FakeStore extends AutoBackupStore {
     writes.add(json);
     return const AutoBackupWriteResult(publicTarget: true);
   }
+
+  @override
+  Future<AutoBackupFileStat?> stat() async {
+    final g = statGate;
+    if (g != null) await g.future;
+    return statResult;
+  }
 }
 
 void main() {
@@ -40,13 +50,17 @@ void main() {
   // 泵起容器：内存库 + mock prefs + 假写入器；挂监听保持控制器存活
   //（App 侧由 app.dart 的 _Boot watch）。订阅建立后的变动才计入。
   Future<(ProviderContainer, _FakeStore, db.Ledger)> setup(
-    WidgetTester tester,
-  ) async {
+    WidgetTester tester, {
+    AutoBackupFileStat? stat,
+    Completer<void>? statGate,
+  }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final database = db.EnvelopeDatabase(NativeDatabase.memory());
     addTearDown(database.close);
-    final store = _FakeStore();
+    final store = _FakeStore()
+      ..statResult = stat
+      ..statGate = statGate;
     final container = ProviderContainer(
       overrides: [
         dbProvider.overrideWithValue(database),
@@ -207,5 +221,51 @@ void main() {
 
     await repo.restoreFromJson(json);
     expect(prefs.getBool(kAutoBackupEnabledKey), isFalse);
+  });
+
+  testWidgets('启动即对文件：设备上已有自动备份 → 状态行还原「上次自动备份」', (tester) async {
+    final t = DateTime(2026, 9, 20, 21, 8);
+    final (container, _, _) = await setup(
+      tester,
+      stat: AutoBackupFileStat(modifiedAt: t, publicTarget: true),
+    );
+    await tester.pump(const Duration(milliseconds: 10)); // 让还原的 future 落定
+
+    final s = container.read(autoBackupProvider);
+    expect(s.lastSuccessAt, t);
+    expect(s.publicTarget, isTrue);
+    expect(s.lastAttemptFailed, isFalse);
+  });
+
+  testWidgets('设备上没有自动备份文件：状态行保持「尚未生成」', (tester) async {
+    final (container, _, _) = await setup(tester);
+    await tester.pump(const Duration(milliseconds: 10));
+
+    final s = container.read(autoBackupProvider);
+    expect(s.lastSuccessAt, isNull);
+    expect(s.lastFailureAt, isNull);
+  });
+
+  testWidgets('会话内写入比文件新：旧文件的还原不覆盖会话结果', (tester) async {
+    final gate = Completer<void>();
+    final (container, store, ledger) = await setup(
+      tester,
+      stat: AutoBackupFileStat(
+        modifiedAt: DateTime(2026, 1, 1),
+        publicTarget: true,
+      ),
+      statGate: gate,
+    );
+    final repo = container.read(repoProvider);
+
+    await repo.updateCurrency(ledger.id, 'US\$');
+    await tester.pump(const Duration(seconds: 4)); // 变动落盘：lastSuccessAt = 现在
+    final sessionTime = container.read(autoBackupProvider).lastSuccessAt;
+    expect(sessionTime, isNotNull);
+
+    gate.complete(); // 放行旧文件还原（1 月 1 日）
+    await tester.pump(const Duration(milliseconds: 10));
+    expect(container.read(autoBackupProvider).lastSuccessAt, sessionTime);
+    expect(store.writes.length, 1);
   });
 }

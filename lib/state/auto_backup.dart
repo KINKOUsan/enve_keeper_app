@@ -94,8 +94,27 @@ class AutoBackupController extends Notifier<AutoBackupState> {
       _sub?.cancel();
       _lifecycle?.dispose();
     });
+    // 启动即对一次文件：状态只在内存里，设备上文件还在却显示「尚未生成」
+    // 会让用户以为备份丢了（票 02 修复）
+    unawaited(_seedFromFile());
     return AutoBackupState(
       enabled: ref.watch(prefsProvider).getBool(kAutoBackupEnabledKey) ?? true,
+    );
+  }
+
+  /// 从自动备份文件还原状态行：文件存在 → 「上次自动备份 · 文件的最近写入
+  /// 时刻」，位置类别按文件实际落点。会话内已知的成功更新（写入时刻更新）
+  /// 时不覆盖；没有文件则保持「尚未生成」。
+  Future<void> _seedFromFile() async {
+    final stat = await ref.read(autoBackupStoreProvider).stat();
+    if (!_active) return;
+    final known = state.lastSuccessAt;
+    if (stat == null || (known != null && !stat.modifiedAt.isAfter(known))) {
+      return;
+    }
+    state = state.copyWith(
+      lastSuccessAt: stat.modifiedAt,
+      publicTarget: stat.publicTarget,
     );
   }
 

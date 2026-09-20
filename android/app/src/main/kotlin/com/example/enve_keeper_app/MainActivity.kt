@@ -3,6 +3,7 @@ package com.example.enve_keeper_app
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -39,31 +40,47 @@ class MainActivity : FlutterActivity() {
                             runOnUiThread { result.success(bytes) }
                         }.start()
                     }
+                    "statAutoBackup" -> {
+                        val subdir = call.argument<String>("subdir") ?: "金打细算"
+                        val fileName = call.argument<String>("fileName") ?: "金打细算-自动备份.jx"
+                        Thread {
+                            val modified = statFromDownloads(applicationContext, subdir, fileName)
+                            runOnUiThread { result.success(modified) }
+                        }.start()
+                    }
                     else -> result.notImplemented()
                 }
             }
     }
 
     /**
-     * 在 Download/<subdir>/ 里按文件名查找，命中返回内容 Uri，未命中返回 null。
+     * 在 Download/<subdir>/ 里按文件名查询，返回游标（调用方 use/close）。
      * 29+ 的查询只返回本应用可见的文件（重装后属主是否可见因系统版本而异，票 03）。
      */
+    private fun queryDownloads(
+        context: Context,
+        subdir: String,
+        fileName: String,
+        projection: Array<String>,
+    ): Cursor? =
+        context.contentResolver.query(
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+            projection,
+            "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+            arrayOf("Download/$subdir/", fileName),
+            null,
+        )
+
+    /** 在 Download/<subdir>/ 里按文件名查找，命中返回内容 Uri，未命中返回 null。 */
     private fun findInDownloads(
         context: Context,
         subdir: String,
         fileName: String,
     ): Uri? {
-        val resolver = context.contentResolver
-        val relPath = "Download/$subdir/"
-        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-        resolver.query(
-            collection,
-            arrayOf(MediaStore.MediaColumns._ID),
-            "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?",
-            arrayOf(relPath, fileName),
-            null,
-        )?.use { c ->
-            if (c.moveToFirst()) return ContentUris.withAppendedId(collection, c.getLong(0))
+        queryDownloads(context, subdir, fileName, arrayOf(MediaStore.MediaColumns._ID))?.use { c ->
+            if (c.moveToFirst()) {
+                return ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, c.getLong(0))
+            }
         }
         return null
     }
@@ -129,6 +146,32 @@ class MainActivity : FlutterActivity() {
         return try {
             val uri = findInDownloads(context, subdir, fileName) ?: return null
             context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * 查 Download/<subdir>/<fileName> 的最近写入时刻（epoch 毫秒，票 02 修复：
+     * 状态行启动时从文件还原）——重装找回（票 03）共用同一套查询。
+     * MediaStore 的 DATE_MODIFIED 是 epoch 秒。未命中/异常返回 null。
+     */
+    private fun statFromDownloads(
+        context: Context,
+        subdir: String,
+        fileName: String,
+    ): Long? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        return try {
+            queryDownloads(
+                context,
+                subdir,
+                fileName,
+                arrayOf(MediaStore.MediaColumns.DATE_MODIFIED),
+            )?.use { c ->
+                if (c.moveToFirst()) return c.getLong(0) * 1000L
+            }
+            null
         } catch (e: Exception) {
             null
         }

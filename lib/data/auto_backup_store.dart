@@ -15,6 +15,17 @@ const kAutoBackupFileName = '金打细算-自动备份.jx';
 // 自动备份子目录名（公共目录：下载/金打细算/；私有目录同用）
 const kAutoBackupDirName = '金打细算';
 
+/// 自动备份文件的最近写入信息（状态行还原用）
+class AutoBackupFileStat {
+  const AutoBackupFileStat({required this.modifiedAt, required this.publicTarget});
+
+  // 文件最近一次被写入的时刻
+  final DateTime modifiedAt;
+
+  // 文件是否在公共目录（false = 沙盒降级档）
+  final bool publicTarget;
+}
+
 /// 一次自动备份写入的结果（状态行显示用）
 class AutoBackupWriteResult {
   const AutoBackupWriteResult({required this.publicTarget});
@@ -91,6 +102,45 @@ class AutoBackupStore {
       if (file.existsSync()) return await file.readAsString();
     } on Exception {
       // 读不了（无文件/无权限）= 无事发生
+    }
+    return null;
+  }
+
+  /// 查自动备份文件的最近写入时刻与位置类别（找不到/读不了返回 null）。
+  /// 控制器启动时用它把「上次自动备份」状态行从文件还原——状态只在内存里，
+  /// 文件还在却显示「尚未生成」会让用户以为备份丢了（票 02 修复）。
+  Future<AutoBackupFileStat?> stat() async {
+    if (Platform.isAndroid) {
+      // MediaStore 未命中 → 继续试私有目录降级档，与 read 对称
+      try {
+        final ms = await _channel.invokeMethod<int>('statAutoBackup', {
+          'subdir': kAutoBackupDirName,
+          'fileName': kAutoBackupFileName,
+        });
+        if (ms != null) {
+          return AutoBackupFileStat(
+            modifiedAt: DateTime.fromMillisecondsSinceEpoch(ms),
+            publicTarget: true,
+          );
+        }
+      } on Exception {
+        // 通道异常 / 引擎不可用（测试环境）：降级读私有目录
+      }
+    }
+    try {
+      final docs = await _docsDirectory();
+      final file = File(
+        '${docs.path}${Platform.pathSeparator}$kAutoBackupDirName'
+        '${Platform.pathSeparator}$kAutoBackupFileName',
+      );
+      if (file.existsSync()) {
+        return AutoBackupFileStat(
+          modifiedAt: file.lastModifiedSync(),
+          publicTarget: false,
+        );
+      }
+    } on Exception {
+      // 读不了 = 当没有
     }
     return null;
   }
