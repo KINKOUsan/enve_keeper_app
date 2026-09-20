@@ -445,3 +445,8 @@ const guideDataSafetyBody =
 
 // 外链打不开的 toast 兜底（关于页/使用说明页共用）
 String linkOpenFailedToast(String url) => '没能打开浏览器，请手动访问 $url';
+
+// ── 支持页（DESIGN.md §9 · v1.2.x 票 05）────
+
+// 支持页开篇一句话
+const supportIntroBody = '金打细算完全免费，如果它帮到了你，可以请作者喝一杯。';

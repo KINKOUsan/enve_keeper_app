@@ -3,13 +3,15 @@
 // 作者卡片 = GitHub 头像（本地资产 assets/avatar.jpg，票 10——GitHub CDN 国内
 // 不可达，头像更换后手动重新下载覆盖资产文件）+ @KINKOUsan，点按卡片与
 // 「意见反馈」均跳 GitHub 主页（external_link 外部浏览器 + toast 兜底）；
-// 「开源许可」= LicensePage。
+// 「支持」= 赞赏码推入页（v1.2.x 票 05）；「开源许可」= LicensePage。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../state/providers.dart';
 import '../../../theme/tokens.dart';
+import '../../common/app_route.dart';
 import '../../common/external_link.dart';
+import 'support_page.dart';
 
 // 作者 GitHub 主页：「意见反馈」跳同一地址
 const kGitHubHome = 'https://github.com/KINKOUsan';
@@ -55,9 +57,10 @@ class AboutPage extends ConsumerWidget {
             // ── 作者卡片：整卡可点，跳 GitHub 主页 ──
             _AuthorCard(onTap: () => _openGitHubHome(context)),
             const SizedBox(height: 14),
-            // ── 反馈 / 许可 ──
+            // ── 反馈 / 支持 / 许可 ──
             _ActionsCard(
               onFeedback: () => _openGitHubHome(context),
+              onSupport: () => _openSupport(context),
               onLicenses: () => _showLicenses(context, version),
             ),
           ],
@@ -80,6 +83,13 @@ class AboutPage extends ConsumerWidget {
           : 'v$version',
       applicationIcon: _appIcon(size: 56, radius: 12),
     );
+  }
+
+  // 进入支持页（v1.2.x 票 05：赞赏码/收款码）
+  void _openSupport(BuildContext context) {
+    Navigator.of(
+      context,
+    ).push(AppPageRoute<void>(builder: (_) => const SupportPage()));
   }
 }
 
@@ -217,14 +227,21 @@ class _AuthorCard extends StatelessWidget {
   }
 }
 
-// ── 反馈 / 许可行卡 ─────────────────────────────
+// ── 反馈 / 支持 / 许可行卡 ─────────────────────
 
 /// 白卡圆角 18、内边距 8；行高 48，样式对齐「我的」页分组卡
 class _ActionsCard extends StatelessWidget {
-  const _ActionsCard({required this.onFeedback, required this.onLicenses});
+  const _ActionsCard({
+    required this.onFeedback,
+    required this.onSupport,
+    required this.onLicenses,
+  });
 
   // 「意见反馈」回调（跳作者主页）
   final VoidCallback onFeedback;
+
+  // 「支持」回调（进收款码页，v1.2.x 票 05）
+  final VoidCallback onSupport;
 
   // 「开源许可」回调（LicensePage）
   final VoidCallback onLicenses;
@@ -250,6 +267,11 @@ class _ActionsCard extends StatelessWidget {
             icon: Icons.chat_bubble_outline,
             label: '意见反馈',
             onTap: onFeedback,
+          ),
+          _ActionRow(
+            icon: Icons.volunteer_activism,
+            label: '支持',
+            onTap: onSupport,
           ),
           _ActionRow(
             icon: Icons.menu_book_outlined,

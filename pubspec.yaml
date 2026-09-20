@@ -59,3 +59,6 @@ flutter:
     - assets/guide/spend.gif
     - assets/guide/transfer.gif
     - assets/guide/period.png
+    # 支持页收款码（v1.2.x 票 05）：素材原样展示（含烙字），不裁剪不变形
+    - assets/wechat_pay.png
+    - assets/alipay.png
