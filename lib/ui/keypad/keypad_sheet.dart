@@ -292,7 +292,8 @@ class _KeypadSheetState extends ConsumerState<_KeypadSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Container(
-        // 高度由内容决定（键高固定 45），任何机型都能完整显示
+        // 高度由内容决定（键盘区是 Flexible，空间不足时钳高裁底，见下方注释），
+        // 任何机型、任何字号都不会产生 RenderFlex 溢出报错
         decoration: const BoxDecoration(
           color: T.surface,
           borderRadius: BorderRadius.vertical(
@@ -418,52 +419,66 @@ class _KeypadSheetState extends ConsumerState<_KeypadSheet> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            // 快捷金额胶囊
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: SizedBox(
-                height: 34,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+            // 快捷胶囊 + 数字键盘：空间富余时原样显示；描述栏唤起输入法、
+            // 整体高度超过可用空间时钳到剩余高度并裁掉底部——键盘原地不动、
+            // 被输入法「掠过」盖住下半截，描述栏始终在输入法上方可见（DESIGN.md §5）
+            Flexible(
+              // 只负责空间不足时「钳高裁底」，不允许用户滚动（键盘不该滚）
+              child: SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (final quick in const [10.0, 50.0, 100.0])
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: _QuickChip(
-                          label: '+${money(quick)}',
-                          onTap: () => _onQuickAdd(quick),
+                    const SizedBox(height: 12),
+                    // 快捷金额胶囊
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: SizedBox(
+                        height: 34,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            for (final quick in const [10.0, 50.0, 100.0])
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: _QuickChip(
+                                  label: '+${money(quick)}',
+                                  onTap: () => _onQuickAdd(quick),
+                                ),
+                              ),
+                            // ALL IN：来源透支或为零时置灰（想法：透支无效）
+                            if (allIn != null)
+                              _QuickChip(
+                                label: 'ALL IN',
+                                onTap: allIn > 0 ? () => _onAllIn(allIn) : null,
+                              ),
+                          ],
                         ),
                       ),
-                    // ALL IN：来源透支或为零时置灰（想法：透支无效）
-                    if (allIn != null)
-                      _QuickChip(
-                        label: 'ALL IN',
-                        onTap: allIn > 0 ? () => _onAllIn(allIn) : null,
+                    ),
+                    const SizedBox(height: 12),
+                    // 5 行键盘：C ÷ × ⌫ / 123− / 456+ / 789= / () 0 .
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _Pad(
+                        onKey: _onKey,
+                        onDelete: () => setState(() {
+                          _hint = null;
+                          _evaluated = false;
+                          if (_expr.isNotEmpty) {
+                            _expr = _expr.substring(0, _expr.length - 1);
+                          }
+                        }),
+                        onEquals: _doEquals,
+                        onOk: () => _confirm(state),
+                        showEquals: _isExprMode,
+                        equalsEnabled: _expr.isNotEmpty,
+                        okEnabled: okEnabled,
+                        okLabel: widget.request.okLabel,
                       ),
+                    ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // 5 行键盘：C ÷ × ⌫ / 123− / 456+ / 789= / () 0 .
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _Pad(
-                onKey: _onKey,
-                onDelete: () => setState(() {
-                  _hint = null;
-                  _evaluated = false;
-                  if (_expr.isNotEmpty) {
-                    _expr = _expr.substring(0, _expr.length - 1);
-                  }
-                }),
-                onEquals: _doEquals,
-                onOk: () => _confirm(state),
-                showEquals: _isExprMode,
-                equalsEnabled: _expr.isNotEmpty,
-                okEnabled: okEnabled,
-                okLabel: widget.request.okLabel,
               ),
             ),
             const SizedBox(height: 20),

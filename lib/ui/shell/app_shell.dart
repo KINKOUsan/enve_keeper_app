@@ -76,6 +76,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Stack(
       children: [
         Scaffold(
+          // 不随输入法缩放：四个 Tab 页都没有直接的文本输入（键盘弹层与各
+          // 对话框/底部弹层各自处理输入法 inset），跟随缩放只会把背景页面压扁
+          resizeToAvoidBottomInset: false,
           body: IndexedStack(
             index: _index,
             children: [

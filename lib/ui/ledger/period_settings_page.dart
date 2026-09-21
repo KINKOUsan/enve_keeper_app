@@ -639,7 +639,7 @@ class _RulesCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              '结转的三条铁律',
+              '结转规则',
               style: TextStyle(
                 fontSize: T.typeBase,
                 fontWeight: FontWeight.w500,
@@ -647,8 +647,8 @@ class _RulesCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            rule('1', '正结余：看信封自己的结转开关——开了带入下期，关了退回待规划。'),
-            rule('2', '负缺口：无论开关都带入下期，透支欠账不会凭空消失。'),
+            rule('1', '对于结余：开启则带入下期，关闭则退回待规划。'),
+            rule('2', '对于透支：一律带入下期，透支欠账不会凭空消失。'),
             rule('3', '待规划原样带入下期；每期的「已使用」一律归零。'),
           ],
         ),

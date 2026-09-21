@@ -98,6 +98,10 @@ class _TxnDetailPageState extends ConsumerState<TxnDetailPage> {
 
     return Scaffold(
       backgroundColor: T.bg,
+      // 页面本身没有直接的文本输入（改描述走对话框、改金额走键盘弹层，
+      // 二者各自处理输入法 inset），不随输入法缩放，避免固定高度的
+      // 内容在输入法打开时溢出（对话框唤起输入法时页面在遮罩后仍会 rebuild）
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

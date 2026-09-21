@@ -303,8 +303,8 @@ String autoBackupStatusFailure(String timeLabel) =>
 
 // 状态行第二行：固定位置。公共目录（Android 下载）卸载重装仍在；
 // 沙盒（iOS / 低版本 Android 降级）不承诺卸载可恢复，文案如实说明
-const autoBackupLocationPublic = '位置：下载/金打细算/金打细算-自动备份.jx（卸载重装仍保留）';
-const autoBackupLocationSandbox = '位置：应用沙盒内单文件（卸载后不保留）';
+const autoBackupLocationPublic = '位置：下载/金打细算/金打细算-自动备份.jx';
+const autoBackupLocationSandbox = '位置：应用沙盒内单文件';
 
 // ── 重装找回自动备份（DESIGN.md §19 · v1.2.x 票 03 · ADR-0018）────
 
@@ -408,7 +408,7 @@ const guideStepTransferDesc = '从一个信封开始拖拽，将钱拖到另一�
 // 「设置信封的作用」节两段
 const guideEnvelopeRoleBody =
     '「信封」这一容器概念大致对应于其他记账软件的各方账户（如微信钱包、支付宝、'
-    '各大银行的储蓄卡等）————但其实很不一样，「金打细算」不提倡使用者细分各种'
+    '各大银行的储蓄卡等）——但其实很不一样，「金打细算」不提倡使用者细分各种'
     '账户的钱，全部一并视为手头可以支配的钱。信封的关键作用是做灵活预算，方便'
     '使用者厘清手头的钱发挥的作用，尽力避免在某些方面超支，以及避免使用者在'
     '临时调配时感到混乱。';
@@ -433,7 +433,7 @@ const guidePeriodHeading = '预算周期';
 const guidePeriodBody =
     '预算周期是「金打细算」设定的分配有效时间区间，默认以每个自然月的 1 日开始'
     '新的周期，同时软件也提供让用户自定义每个月的起始日，也支持以周为一个周期'
-    '（从周一开始），甚至支持自由周期————由用户手动结束当前周期。';
+    '（从周一开始），甚至支持自由周期——由用户手动结束当前周期。';
 
 // 进度条句（原文）+ 公式人话（票 04 唯一改写处：LaTeX → 一句人话，接在冒号后）
 const guideProgressbarBody =
