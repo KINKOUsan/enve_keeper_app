@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="金打细算"
+        android:label="${appName}"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <!-- 竖屏锁定：不跟随系统旋转（DESIGN.md §1），从启动第一帧生效 -->
