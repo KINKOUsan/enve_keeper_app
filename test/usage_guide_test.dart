@@ -1,8 +1,9 @@
-// 使用说明页 widget 测试（v1.2.x 票 04）：
-// 「我的」页关于组入口行、说明页内容完整（标题/文案/四张 GIF + 周期图）、
-// 进度条公式已人话化、sspai 外链打开与 toast 兜底。
+// 使用说明页 widget 测试（v1.2.x 票 04 · 文案忠实还原 README 版）：
+// 「我的」页关于组入口行、说明页内容完整（节标题/原文条目/四张 GIF + 周期图）、
+// 公式为人话（无 LaTeX）、开篇段内嵌 sspai 链接可点 + toast 兜底。
 // 注意：GIF 持续动画会让 pumpAndSettle 永不收敛，全程只用固定 pump；
-// ListView 懒构建，视口外的节要先滚到才能断言。
+// ListView 懒构建，视口外的节要先滚到才能断言；条目粗体标签在 RichText 里，
+// 断言用 findRichText，点击内嵌链接用 TextPainter 定位字符偏移。
 import 'package:enve_keeper_app/data/db/database.dart' as db;
 import 'package:drift/native.dart';
 import 'package:enve_keeper_app/state/providers.dart';
@@ -10,6 +11,7 @@ import 'package:enve_keeper_app/ui/copy.dart';
 import 'package:enve_keeper_app/ui/shell/profile/profile_page.dart';
 import 'package:enve_keeper_app/ui/shell/profile/usage_guide_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,12 +42,16 @@ void main() {
     );
   });
 
-  // 沿列表把 [finder] 拖进视口（懒构建的节要滚到才存在）
+  // 沿列表把 [finder] 拖进视口（懒构建的节要滚到才存在；先向下再向上兜底，
+  // 支持断言顺序往回走）
   Future<void> scrollTo(WidgetTester tester, Finder finder) async {
     final list = find.byType(ListView).first;
-    for (var i = 0; i < 30 && finder.evaluate().isEmpty; i++) {
-      await tester.drag(list, const Offset(0, -300));
-      await tester.pump(const Duration(milliseconds: 100));
+    for (final direction in const [Offset(0, -300), Offset(0, 300)]) {
+      for (var i = 0; i < 30 && finder.evaluate().isEmpty; i++) {
+        await tester.drag(list, direction);
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      if (finder.evaluate().isNotEmpty) break;
     }
     expect(finder, findsOneWidget);
   }
@@ -83,6 +89,31 @@ void main() {
         (w.image as AssetImage).assetName == asset,
   );
 
+  // 开篇段（RichText 整段）的 Finder
+  Finder introRich() => find.byWidgetPredicate(
+    (w) =>
+        w is RichText &&
+        w.text.toPlainText().contains(guideIntroBeforeLink) &&
+        w.text.toPlainText().contains(guideIntroAfterLink),
+  );
+
+  // 在开篇段上点按内嵌链接标题的字符中点（TextPainter 定位偏移）
+  Future<void> tapInlineLink(WidgetTester tester) async {
+    final para = tester.renderObject<RenderParagraph>(introRich());
+    final painter = TextPainter(
+      text: para.text,
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: para.size.width);
+    final mid = guideIntroBeforeLink.length + guideArticleLinkLabel.length ~/ 2;
+    final caret = painter.getOffsetForCaret(
+      TextPosition(offset: mid),
+      Rect.zero,
+    );
+    painter.dispose();
+    await tester.tapAt(para.localToGlobal(caret + const Offset(4, 10)));
+    await tester.pump();
+  }
+
   testWidgets('「我的」页关于组首行是「使用说明」，点击进入说明页', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -119,55 +150,71 @@ void main() {
     await tester.tap(guideRow);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('什么是「信封预算法」'), findsOneWidget);
+    expect(introRich(), findsOneWidget);
     await teardownTree(tester);
   });
 
-  testWidgets('说明页内容完整：各节标题、正文、四张 GIF 与周期图都在', (tester) async {
+  testWidgets('说明页内容完整：各节标题、原文条目、四张 GIF 与周期图都在', (tester) async {
     await pumpGuide(tester);
 
-    // 首屏卡：什么是信封预算法 + 外链
-    expect(find.text('什么是「信封预算法」'), findsOneWidget);
-    expect(find.text(guideArticleLinkLabel), findsOneWidget);
+    // 开篇段（原文整段）在首屏
+    expect(introRich(), findsOneWidget);
 
-    // 逐节滚入视口再断言（懒构建）
-    await scrollTo(tester, find.text('记收入'));
-    expect(find.text('让每一块钱都有「分工」'), findsOneWidget);
+    // 逐节滚入视口再断言（懒构建）；条目是「粗体标签：正文」富文本
+    await scrollTo(
+      tester,
+      find.textContaining('点击首页顶部的「待规划」区域', findRichText: true),
+    );
+    expect(find.textContaining('记录收入：', findRichText: true), findsOneWidget);
     expect(gif('assets/guide/income.gif'), findsOneWidget);
 
-    await scrollTo(tester, find.text('分配金额'));
+    await scrollTo(
+      tester,
+      find.textContaining('将钱拖拽进信封', findRichText: true),
+    );
     expect(gif('assets/guide/allocate.gif'), findsOneWidget);
 
-    await scrollTo(tester, find.text('记消费'));
+    await scrollTo(
+      tester,
+      find.textContaining('双击对应信封', findRichText: true),
+    );
     expect(gif('assets/guide/spend.gif'), findsOneWidget);
 
-    await scrollTo(tester, find.text('信封的作用'));
-    expect(find.textContaining('一并视为可以支配的钱'), findsOneWidget);
+    await scrollTo(tester, find.text('设置信封的作用'));
+    expect(find.textContaining('一并视为手头可以支配的钱'), findsOneWidget);
 
-    await scrollTo(tester, find.text('灵活调整预算'));
+    await scrollTo(
+      tester,
+      find.textContaining('将钱拖到另一个信封', findRichText: true),
+    );
     expect(gif('assets/guide/transfer.gif'), findsOneWidget);
-    expect(find.textContaining('金额可以小于 0'), findsOneWidget);
+    expect(find.textContaining('金额数可以小于0'), findsOneWidget);
 
     await scrollTo(tester, find.text('预算周期与结转'));
     expect(find.textContaining('还剩几成预算'), findsOneWidget);
+    expect(find.textContaining('剩余的预算将退回至「待规划」'), findsOneWidget);
     expect(gif('assets/guide/period.png'), findsOneWidget);
 
     await scrollTo(tester, find.text('数据安全'));
-    expect(find.textContaining('没有任何网络连接'), findsOneWidget);
+    expect(
+      find.textContaining('隐藏首页显示的金额数目：', findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.textContaining('不存在网络连接'), findsOneWidget);
     await teardownTree(tester);
   });
 
-  test('进度条公式已改写为人话：文案常量里不出现 LaTeX 记号', () {
+  test('进度条公式已按工单改写为人话：全文不出现 LaTeX 记号', () {
     expect(guideProgressbarBody.contains(r'\frac'), isFalse);
     expect(guideProgressbarBody.contains(r'$$'), isFalse);
-    expect(guideProgressbarBody.contains('已规划'), isTrue);
+    expect(guideFormulaPlain.contains(r'\frac'), isFalse);
+    expect(guideFormulaPlain.contains('已规划'), isTrue);
   });
 
-  testWidgets('sspai 外链：点按经外部浏览器打开文章地址', (tester) async {
+  testWidgets('开篇段内嵌 sspai 链接：点按经外部浏览器打开文章地址', (tester) async {
     await pumpGuide(tester);
 
-    await tester.tap(find.text(guideArticleLinkLabel));
-    await tester.pump();
+    await tapInlineLink(tester);
 
     expect(launchedUrl, kEnvelopeBudgetArticleUrl);
     // 打开成功：不出现兜底 toast
@@ -182,7 +229,7 @@ void main() {
     launchOk = false;
     await pumpGuide(tester);
 
-    await tester.tap(find.text(guideArticleLinkLabel));
+    await tapInlineLink(tester);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 

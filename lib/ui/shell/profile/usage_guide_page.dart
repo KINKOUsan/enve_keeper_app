@@ -1,8 +1,9 @@
 // 使用说明页（DESIGN.md §9 · v1.2.x 票 04）。
-// README「使用说明」节按 App 排版语言手写的静态重排（拷问决策 2026-09-20：
-// 不引 markdown 渲染包）；README 更新后需手动同步页内文案（copy.dart）。
-// 内容：信封预算法（sspai 外链）→ 记收入/分配/记消费三张 GIF → 信封的作用
-// → 灵活调整（转移 GIF）→ 预算周期与结转（进度条公式的人话版）→ 数据安全。
+// README「使用说明」节按 App 排版语言重排：正文逐字忠实还原原文（用户要求
+// 2026-09-21），仅做结构化排版；唯一改写处是工单明示的 LaTeX 公式人话版。
+// 手写静态页而非 markdown 渲染包（拷问决策 2026-09-20）；README 更新后需
+// 手动同步页内文案（copy.dart）。
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../theme/tokens.dart';
@@ -43,47 +44,38 @@ class UsageGuidePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            // ── 什么是信封预算法（sspai 外链）──
-            _GuideCard(
-              title: '什么是「信封预算法」',
-              children: [
-                const _BodyText(guideEnvelopeIntroBody),
-                const SizedBox(height: 8),
-                const _BodyText(guideArticleIntroBody),
-                const _LinkRow(
-                  label: guideArticleLinkLabel,
-                  url: kEnvelopeBudgetArticleUrl,
-                ),
-              ],
+            // ── 开篇段（原文，内嵌 sspai 链接可点）──
+            const _GuideCard(
+              children: [_LinkifiedIntro()],
             ),
             const SizedBox(height: 14),
-            // ── 让每一块钱都有分工（三步 + GIF）──
+            // ── 让得到的每一块钱都做好「分工」──
             const _GuideCard(
-              title: '让每一块钱都有「分工」',
+              title: '让得到的每一块钱都做好「分工」',
               children: [
                 _BodyText(guideAllocationBody),
                 SizedBox(height: 12),
                 _GuideStep(
-                  stepLabel: '记收入',
+                  label: guideStepIncomeLabel,
                   desc: guideStepIncomeDesc,
                   asset: _kIncomeGif,
                 ),
                 _GuideStep(
-                  stepLabel: '分配金额',
+                  label: guideStepAllocateLabel,
                   desc: guideStepAllocateDesc,
                   asset: _kAllocateGif,
                 ),
                 _GuideStep(
-                  stepLabel: '记消费',
+                  label: guideStepSpendLabel,
                   desc: guideStepSpendDesc,
                   asset: _kSpendGif,
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            // ── 信封的作用 ──
+            // ── 设置信封的作用 ──
             const _GuideCard(
-              title: '信封的作用',
+              title: '设置信封的作用',
               children: [
                 _BodyText(guideEnvelopeRoleBody),
                 SizedBox(height: 8),
@@ -91,7 +83,7 @@ class UsageGuidePage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-            // ── 灵活调整预算（转移 GIF）──
+            // ── 灵活调整预算 ──
             const _GuideCard(
               title: '灵活调整预算',
               children: [
@@ -100,22 +92,26 @@ class UsageGuidePage extends StatelessWidget {
                 _BodyText(guideOverdraftBody),
                 SizedBox(height: 12),
                 _GuideStep(
-                  stepLabel: '信封之间转移',
+                  label: guideStepTransferLabel,
                   desc: guideStepTransferDesc,
                   asset: _kTransferGif,
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            // ── 预算周期与结转（进度条公式的人话版）──
+            // ── 预算周期与结转（公式为人话版）──
             const _GuideCard(
               title: '预算周期与结转',
               children: [
+                _SubHeading(guidePeriodHeading),
                 _BodyText(guidePeriodBody),
                 SizedBox(height: 8),
-                _BodyText(guideProgressbarBody),
+                _BodyText(guideProgressbarBody + guideFormulaPlain),
                 SizedBox(height: 8),
+                _SubHeading(guideCarryoverHeading),
                 _BodyText(guideCarryoverBody),
+                SizedBox(height: 8),
+                _BodyText(guideCarryoverOverdraftBody),
                 SizedBox(height: 12),
                 _GuideImage(asset: _kPeriodPng),
               ],
@@ -125,9 +121,12 @@ class UsageGuidePage extends StatelessWidget {
             const _GuideCard(
               title: '数据安全',
               children: [
-                _BodyText(guidePrivacyBody),
+                _GuideStep(label: guidePrivacyLabel, desc: guidePrivacyBody),
                 SizedBox(height: 8),
-                _BodyText(guideDataSafetyBody),
+                _GuideStep(
+                  label: guideDataSafetyLabel,
+                  desc: guideDataSafetyBody,
+                ),
               ],
             ),
           ],
@@ -154,18 +153,22 @@ class _BackButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
           onTap: () => Navigator.of(context).pop(),
-          child: const Icon(Icons.arrow_back_rounded, size: 16, color: T.textPrimary),
+          child: const Icon(
+            Icons.arrow_back_rounded,
+            size: 16,
+            color: T.textPrimary,
+          ),
         ),
       ),
     );
   }
 }
 
-/// 白卡圆角 18：组标题 15 SemiBold + 若干内容块
+/// 白卡圆角 18：可选节标题 + 若干内容块
 class _GuideCard extends StatelessWidget {
-  const _GuideCard({required this.title, required this.children});
+  const _GuideCard({this.title, required this.children});
 
-  final String title;
+  final String? title;
   final List<Widget> children;
 
   @override
@@ -187,15 +190,17 @@ class _GuideCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: T.typeMd,
-              fontWeight: FontWeight.w600,
-              color: T.textPrimary,
+          if (title != null) ...[
+            Text(
+              title!,
+              style: const TextStyle(
+                fontSize: T.typeMd,
+                fontWeight: FontWeight.w600,
+                color: T.textPrimary,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
+          ],
           ...children,
         ],
       ),
@@ -222,31 +227,114 @@ class _BodyText extends StatelessWidget {
   }
 }
 
-/// 一个操作步骤：步骤名 + 说明 + 演示动图
-class _GuideStep extends StatelessWidget {
-  const _GuideStep({required this.stepLabel, required this.desc, required this.asset});
+/// 节内小标题（原文的 **预算周期**：/**结转**：加粗行）
+class _SubHeading extends StatelessWidget {
+  const _SubHeading(this.text);
 
-  final String stepLabel;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: T.typeBase,
+        fontWeight: FontWeight.w600,
+        color: T.textPrimary,
+      ),
+    );
+  }
+}
+
+/// 开篇段（原文整段）：内嵌链接标题可点，跳 sspai 外部浏览器
+class _LinkifiedIntro extends StatefulWidget {
+  const _LinkifiedIntro();
+
+  @override
+  State<_LinkifiedIntro> createState() => _LinkifiedIntroState();
+}
+
+class _LinkifiedIntroState extends State<_LinkifiedIntro> {
+  late final TapGestureRecognizer _linkTap;
+
+  @override
+  void initState() {
+    super.initState();
+    _linkTap = TapGestureRecognizer()
+      ..onTap = () => openExternalLink(context, kEnvelopeBudgetArticleUrl);
+  }
+
+  @override
+  void dispose() {
+    _linkTap.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const bodyStyle = TextStyle(
+      fontSize: T.typeBase,
+      height: 1.7,
+      color: T.textSecondary,
+    );
+    return Text.rich(
+      TextSpan(
+        style: bodyStyle,
+        children: [
+          const TextSpan(text: guideIntroBeforeLink),
+          TextSpan(
+            text: guideArticleLinkLabel,
+            style: const TextStyle(color: T.primaryDeep),
+            recognizer: _linkTap,
+          ),
+          const TextSpan(text: guideIntroAfterLink),
+        ],
+      ),
+    );
+  }
+}
+
+/// 一个条目（原文的粗体标签行）：**标签**：正文，可配演示图
+class _GuideStep extends StatelessWidget {
+  const _GuideStep({required this.label, required this.desc, this.asset});
+
+  final String label;
   final String desc;
-  final String asset;
+
+  // 演示图（可空——数据安全两条没有图）
+  final String? asset;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          stepLabel,
-          style: const TextStyle(
-            fontSize: T.typeBase,
-            fontWeight: FontWeight.w600,
-            color: T.textPrimary,
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '$label：',
+                style: const TextStyle(
+                  fontSize: T.typeBase,
+                  fontWeight: FontWeight.w600,
+                  color: T.textPrimary,
+                ),
+              ),
+              TextSpan(
+                text: desc,
+                style: const TextStyle(
+                  fontSize: T.typeBase,
+                  height: 1.7,
+                  color: T.textSecondary,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 4),
-        _BodyText(desc),
-        const SizedBox(height: 10),
-        _GuideImage(asset: asset),
+        if (asset != null) ...[
+          const SizedBox(height: 10),
+          _GuideImage(asset: asset!),
+        ],
       ],
     );
   }
@@ -269,41 +357,6 @@ class _GuideImage extends StatelessWidget {
           fit: BoxFit.fitWidth,
           gaplessPlayback: true,
           excludeFromSemantics: true,
-        ),
-      ),
-    );
-  }
-}
-
-/// sspai 外链行：琥珀色文章标题 + 打开图标，点按跳外部浏览器
-class _LinkRow extends StatelessWidget {
-  const _LinkRow({required this.label, required this.url});
-
-  final String label;
-  final String url;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () => openExternalLink(context, url),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: T.typeBase,
-                  fontWeight: FontWeight.w500,
-                  color: T.primaryDeep,
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-            const Icon(Icons.open_in_new, size: 16, color: T.textTertiary),
-          ],
         ),
       ),
     );
