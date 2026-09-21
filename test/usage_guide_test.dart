@@ -191,7 +191,7 @@ void main() {
     expect(find.textContaining('金额数可以小于0'), findsOneWidget);
 
     await scrollTo(tester, find.text('预算周期与结转'));
-    expect(find.textContaining('还剩几成预算'), findsOneWidget);
+    expect(find.textContaining('当前周期内信封的支出'), findsOneWidget);
     expect(find.textContaining('剩余的预算将退回至「待规划」'), findsOneWidget);
     expect(gif('assets/guide/period.png'), findsOneWidget);
 
@@ -204,11 +204,11 @@ void main() {
     await teardownTree(tester);
   });
 
-  test('进度条公式已按工单改写为人话：全文不出现 LaTeX 记号', () {
+  test('进度条公式为 README 原文写法：不出现 LaTeX 记号', () {
     expect(guideProgressbarBody.contains(r'\frac'), isFalse);
     expect(guideProgressbarBody.contains(r'$$'), isFalse);
     expect(guideFormulaPlain.contains(r'\frac'), isFalse);
-    expect(guideFormulaPlain.contains('已规划'), isTrue);
+    expect(guideFormulaPlain.contains('当前周期内信封的支出'), isTrue);
   });
 
   testWidgets('开篇段内嵌 sspai 链接：点按经外部浏览器打开文章地址', (tester) async {

@@ -435,12 +435,12 @@ const guidePeriodBody =
     '新的周期，同时软件也提供让用户自定义每个月的起始日，也支持以周为一个周期'
     '（从周一开始），甚至支持自由周期——由用户手动结束当前周期。';
 
-// 进度条句（原文）+ 公式人话（票 04 唯一改写处：LaTeX → 一句人话，接在冒号后）
+// 进度条句（原文）+ 公式（用户 README 原文写法，9c3e48c 起替换 LaTeX）
 const guideProgressbarBody =
     '在预算周期内，每个信封从「待规划」转入金额后，都将同时累加「已规划」，'
     '即这个信封在周期内从「待规划」进过多少钱，单击信封进入信封详情页可见。'
     '首页的信封上显示的进度条显示的进度为：';
-const guideFormulaPlain = '已规划减去已支出，再除以已规划，也就是这个信封还剩几成预算。';
+const guideFormulaPlain = '（当前周期的已规划 - 当前周期内信封的支出） / 当前周期的已规划。';
 
 const guideCarryoverHeading = '结转';
 const guideCarryoverBody =
