@@ -118,11 +118,7 @@
 
 ## 下载安装
 
-暂未提供预编译包，请自行构建；APK 将随 Release 发布。
-
-<!-- 发布 Release 后替换为：
-最新版本见 [Releases](../../releases/latest)。
--->
+Android: [Releases(点这儿下载)](https://github.com/KINKOUsan/enve_keeper_app/releases/tag/v1.2.1)
 
 ## 关于本项目的开发
 本项目大量使用AI进行编码，笔者只做了一些实机功能测试，如果发现项目有任何问题，或者有任何改进建议，都欢迎提Issues。笔者是个大学生，是个正在学习中的开发小白，有任何做得不成熟之处敬请谅解。
