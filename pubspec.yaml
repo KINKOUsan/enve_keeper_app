@@ -1,7 +1,7 @@
 name: enve_keeper_app
 description: "金打细算 — 信封记账 App"
 publish_to: 'none'
-version: 1.2.1+4
+version: 1.2.2+5
 
 environment:
   sdk: ^3.13.3
