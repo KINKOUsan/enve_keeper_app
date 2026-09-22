@@ -39,6 +39,15 @@ class ProfileController extends Notifier<UserProfile> {
   static const _kSignature = 'profile.signature';
   static const _kAvatarPath = 'profile.avatarPath';
 
+  // 头像文件序号：同一毫秒内连续换头像也保证新路径不重复（260922 修复）
+  static int _avatarSeq = 0;
+
+  // 应用支持目录解析器（测试注入临时目录用，生产 = path_provider）
+  ProfileController({Future<Directory> Function()? supportDirectory})
+    : _supportDirectory = supportDirectory ?? getApplicationSupportDirectory;
+
+  final Future<Directory> Function() _supportDirectory;
+
   @override
   UserProfile build() {
     final prefs = ref.watch(prefsProvider);
@@ -64,10 +73,15 @@ class ProfileController extends Notifier<UserProfile> {
 
   // 从相册选取的源文件拷贝进应用私有目录并记录路径；替换成功后清理旧文件
   Future<void> setAvatarFrom(String sourcePath) async {
-    final docs = await getApplicationSupportDirectory();
+    final docs = await _supportDirectory();
     final dir = Directory('${docs.path}/avatar');
     await dir.create(recursive: true);
-    final target = '${dir.path}/avatar.png';
+    // 每次选取用新文件名（时间戳 + 序号），不复用固定 avatar.png：
+    // 同名覆盖后路径不变，Flutter 图片缓存按路径命中旧图，
+    // 表现为「选了图却不替换」「恢复默认后再选还是旧图」（260922 修复）
+    final target =
+        '${dir.path}/avatar-${DateTime.now().millisecondsSinceEpoch}'
+        '-${_avatarSeq++}.png';
     await File(sourcePath).copy(target);
 
     final old = state.avatarPath;
