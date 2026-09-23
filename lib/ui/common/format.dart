@@ -32,7 +32,13 @@ double parseMoney(String s) {
   return (v * 100).roundToDouble() / 100;
 }
 
-/// 流水分组日期标签：今天 · 9月15日 / 昨天 · 9月14日 / 9月12日 · 周五
+/// 跨年年份前缀：当年为空串，非当年带「yyyy年」（dayLabel / atLabel 共用此规则）
+String _yearPrefix(DateTime d, DateTime now) =>
+    d.year == now.year ? '' : '${d.year}年';
+
+/// 流水分组日期标签：今天 · 9月15日 / 昨天 · 9月14日 / 9月12日 · 周五。
+/// 非当年日期带年份（2025年12月31日 · 周三）——时间可补记到过去任意时刻后
+/// （ADR-0019），跨年账本的组头不带年份会有同月日歧义。
 String dayLabel(DateTime d, DateTime now) {
   const weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
   final sameDay =
@@ -44,8 +50,13 @@ String dayLabel(DateTime d, DateTime now) {
       d.month == yesterday.month &&
       d.day == yesterday.day;
   if (isYesterday) return '昨天 · ${d.month}月${d.day}日';
-  return '${d.month}月${d.day}日 · ${weekdays[d.weekday - 1]}';
+  return '${_yearPrefix(d, now)}${d.month}月${d.day}日 · ${weekdays[d.weekday - 1]}';
 }
+
+/// 详情页「时间」行的值：9月15日 08:30；非当年带年份（2025年12月31日 20:05）。
+/// 与 dayLabel 同一条跨年规则（ADR-0019）。
+String atLabel(DateTime d, DateTime now) =>
+    '${_yearPrefix(d, now)}${d.month}月${d.day}日 ${clockLabel(d)}';
 
 /// 时间 HH:mm
 String clockLabel(DateTime d) =>

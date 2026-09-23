@@ -191,8 +191,8 @@ const carryoverSwitchSubtitle = '关掉则结转时剩余退回待规划';
 
 // ── 交易详情与撤销（DESIGN.md §16）───────────
 
-// 详情页底部规则提示
-const txnEditRulesHint = '点金额或描述就能改。改完相关信封的余额会自动重算；不可跨月修改';
+// 详情页底部规则提示（260922 定稿逐字：时间可编辑后随跨月放开换新，ADR-0019）
+const txnEditRulesHint = '可修改金额、描述与时间';
 
 // 结转退回详情页提示（ADR-0016：系统行为，替代 txnEditRulesHint 出现）
 const refundDetailHint = '这条记录由周期结转自动生成：金额退回待规划、不计收支，不可修改也不可撤销。';

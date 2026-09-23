@@ -414,7 +414,8 @@ class AppRepository {
     );
   }
 
-  /// 编辑时间（只允许改「日」，跨月由 UI 层挡住，见不变量⑧）
+  /// 编辑时间（ADR-0019：时间是档案标签，可改到任意过去时刻、上限今天由弹层挡；
+  /// 纯档案字段更新，不参与算账、不动任何余额）
   Future<void> editTransactionAt(String id, DateTime at) async {
     await (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
       db.TransactionsCompanion(at: Value(at)),

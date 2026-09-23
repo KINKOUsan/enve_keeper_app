@@ -13,6 +13,7 @@ import '../common/format.dart';
 import '../copy.dart';
 import '../keypad/keypad_flow.dart';
 import '../keypad/keypad_models.dart';
+import 'time_edit_sheet.dart';
 
 class TxnDetailPage extends ConsumerStatefulWidget {
   const TxnDetailPage({super.key, required this.txn});
@@ -277,7 +278,10 @@ class _TxnDetailPageState extends ConsumerState<TxnDetailPage> {
                     ],
                     _FieldRow(
                       label: '时间',
-                      value: '${t.at.month}月${t.at.day}日 ${clockLabel(t.at)}',
+                      value: atLabel(t.at, DateTime.now()),
+                      // 结转退回纯只读（ADR-0016）；其余可点改时间（ADR-0019）
+                      editable: !isSystemRefund,
+                      onTap: () => _editTime(context, t),
                     ),
                     // 类型不可改（ADR-0009）：字色降 + 无箭头
                     _FieldRow(
@@ -352,6 +356,16 @@ class _TxnDetailPageState extends ConsumerState<TxnDetailPage> {
         titleOverride: '改金额',
       ),
     );
+  }
+
+  // 改时间（ADR-0019）：档案标签更新，不动任何余额；结转退回无入口。
+  // 弹层取消返回 null；滚轮只到分钟精度，用 isAtSameMomentAs 判断值是否没变。
+  Future<void> _editTime(BuildContext context, Txn t) async {
+    final picked = await showTimeEditSheet(context, initial: t.at);
+    // pop 竞态防护：弹层停留期间详情页可能已被数据流自动关闭（陷阱清单）
+    if (picked == null || !mounted) return;
+    if (picked.isAtSameMomentAs(t.at)) return;
+    await ref.read(repoProvider).editTransactionAt(t.id, picked);
   }
 
   // 改描述：文本输入对话框
