@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 信封卡片（v1.3.0 票 05 / ADR-0021）：约 2×2 格正方形，可缩放。
+     数据由 App 推送（ADR-0021：无后台轮询），updatePeriodMillis=0 不自启刷新。
+     reconfigurable（票 07）：Android 12+ 长按可「重新配置」进应用内编辑页，
+     且添加时不强制先配置（Android 11- 忽略此属性，由配置入口回 OK 保占位）。 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"
+    android:configure="com.example.enve_keeper_app.WidgetConfigureActivity"
+    android:widgetFeatures="reconfigurable"
+    android:description="@string/envelope_widget_description"
+    android:initialLayout="@layout/envelope_widget" />

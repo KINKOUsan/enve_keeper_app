@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 信封卡片圆角底（v1.3.0 票 05）：白色占位，运行时按信封主题色 setColorFilter 着色 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFFFFF" />
+    <corners android:radius="18dp" />
+</shape>

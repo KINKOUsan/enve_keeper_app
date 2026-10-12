@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/app_repository.dart';
 import 'data/db/database.dart' as db;
+import 'home_widget/widget_refresh.dart';
+import 'home_widget/widget_sync.dart';
 import 'state/auto_backup.dart';
 import 'state/providers.dart';
 import 'theme/tokens.dart';
@@ -57,6 +59,11 @@ class _BootState extends ConsumerState<_Boot> {
   @override
   void initState() {
     super.initState();
+    // 悬浮记账中转监听（票 14）：浮层引擎在另一个 drift 连接上写库后，
+    // 原生侧中转 dataChanged 到主引擎，强制全部 watch 流重查
+    installExternalDataChangedHandler(() {
+      if (mounted) ref.read(repoProvider).notifyExternalChanges();
+    });
     _bootstrap();
   }
 
@@ -207,6 +214,8 @@ class _BootState extends ConsumerState<_Boot> {
     // 自动备份常驻：从启动即 watch，让控制器与生命周期监听全应用存活
     // （v1.2.x 票 02 · ADR-0018）
     ref.watch(autoBackupProvider);
+    // 桌面小组件数据同步常驻：每次数据变动即推送（v1.3.0 票 05 · ADR-0021）
+    ref.watch(widgetSyncProvider);
     final ledger = ref.watch(activeLedgerProvider);
     if (_error != null) {
       // 数据异常全屏错误（DESIGN.md §18）

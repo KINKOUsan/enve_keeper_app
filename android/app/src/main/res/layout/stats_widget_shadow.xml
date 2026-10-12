@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 【已弃用（票 16，勿引用）】阴影自票 16 起恒开并已并入 stats_widget.xml，
+     本变体不再被 Provider / initialLayout 引用，保留仅作历史存档（等用户删）。 -->
+<!-- 统计卡片·文字阴影变体（v1.3.0 票 09 / 票 13 放大）：与 stats_widget.xml 同构，
+     仅 label/v0/v1/v2 四个文本带阴影（RemoteViews 无法运行时设阴影，
+     渲染时按 shadow_<id> 键二选一）。阴影参数：柔和黑、向下 1dp、半径 3。 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_bg_rounded" />
+
+    <ImageView
+        android:id="@+id/scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_scrim_rounded"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/label"
+            android:shadowColor="#B3000000"
+            android:shadowDx="0"
+            android:shadowDy="1"
+            android:shadowRadius="3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="2dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- 图表主体盒（票 13）：宽度按 0.72 权重（票 15 二轮：柱状图再拉长，数字摘要 0.28 收右）、高度撑满整行，
+                 fitCenter 取盒内最大适配——图表随卡片拉大而生长 -->
+            <ImageView
+                android:id="@+id/chart"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="0.72"
+                android:scaleType="fitCenter" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.28"
+                android:layout_marginStart="12dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/l0"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/stats_field_planned"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/v0"
+                    android:shadowColor="#B3000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/l1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/stats_field_used"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/v1"
+                    android:shadowColor="#B3000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/l2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/stats_field_left"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/v2"
+                    android:shadowColor="#B3000000"
+                    android:shadowDx="0"
+                    android:shadowDy="1"
+                    android:shadowRadius="3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 执行进度条：预渲染 PNG（国产桌面渲染 ProgressBar 不稳，是
+             「载入窗口小部件时出现问题」的已知触发点） -->
+        <ImageView
+            android:id="@+id/progress"
+            android:layout_width="match_parent"
+            android:layout_height="5dp"
+            android:layout_marginTop="4dp"
+            android:scaleType="fitXY" />
+    </LinearLayout>
+</FrameLayout>

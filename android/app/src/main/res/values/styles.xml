@@ -15,4 +15,14 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+
+    <!-- 悬浮快速记账浮层（v1.3.0 票 14）：半透明 Activity——windowIsTranslucent
+         让桌面透出来，windowBackground 直接画 50% 黑遮罩：点下即刻可见，
+         先于 Flutter 首帧（引擎点火约 1 秒，遮罩先行给足「弹出」体感）。
+         键盘弹出后其自带 34% 弹层遮罩叠加其上，最终约 67% 聚焦。 -->
+    <style name="QuickRecordTheme" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@color/quick_record_scrim</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Translucent</item>
+    </style>
 </resources>

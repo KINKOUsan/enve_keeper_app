@@ -1,9 +1,11 @@
-// schema 迁移与版本兼容验证（票 01 · ADR-0013；v3→v4 货币符号 · 票 02 · ADR-0017）。
-// 四块：
+// schema 迁移与版本兼容验证（票 01 · ADR-0013；v3→v4 货币符号 · 票 02 · ADR-0017；
+// v4→v5 描述历史 · v1.3.0 票 02 · ADR-0020）。
+// 五块：
 // 1) 真实走 v2 → v3 升级路径（NativeDatabase.memory 的 setup 钩子搭 v2 旧库）；
 // 2) .jx 备份兼容：恢复 v1.0（schema v2）旧备份归一化、导出含新字段、拒收更新版本；
 // 3) touchLedgerPeriod 仓库级行为：自动类型越界静默结转、自由类型永不自动；
-// 4) 真实走 v3 → v4 升级路径：设置表加 currency 列，存量行回填默认 ¥。
+// 4) 真实走 v3 → v4 升级路径：设置表加 currency 列，存量行回填默认 ¥；
+// 5) 真实走 v4 → v5 升级路径：新增描述历史表，存量数据不丢。
 // 说明：setup 回调的 raw 参数类型来自 sqlite3 包，测试不直接依赖该包，故以
 // dynamic 传递（行为已由本文件测试覆盖）。
 import 'dart:convert';
@@ -14,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:enve_keeper_app/data/app_repository.dart';
 import 'package:enve_keeper_app/data/db/database.dart' as db;
+import 'package:enve_keeper_app/domain/models.dart';
 import 'package:enve_keeper_app/domain/period_logic.dart';
 
 // v2 的 ledgers 表结构（ADR-0011/0012 时代：月 key，无周期字段）
@@ -102,6 +105,75 @@ CREATE TABLE ledgers (
     );
   }
   raw.execute('PRAGMA user_version = 3');
+}
+
+// 造一个 v4 库：v3 的账本表 + 停用信封列 + 含 currency 的设置表，
+// 无描述历史表（v5 之前的世界），user_version = 4
+void _setupV4Db(dynamic raw) {
+  raw.execute('''
+CREATE TABLE ledgers (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  onboarded INTEGER NOT NULL DEFAULT 0,
+  last_active_month TEXT NULL,
+  last_period_start TEXT NULL,
+  period_type TEXT NOT NULL DEFAULT 'naturalMonth',
+  period_start_day INTEGER NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+)
+''');
+  raw.execute('''
+CREATE TABLE envelopes (
+  id TEXT NOT NULL PRIMARY KEY,
+  ledger_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  icon TEXT NOT NULL,
+  color TEXT NOT NULL,
+  planned REAL NOT NULL,
+  used REAL NOT NULL,
+  target REAL NULL,
+  carryover INTEGER NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  archived_at INTEGER NULL
+)
+''');
+  raw.execute('''
+CREATE TABLE transactions (
+  id TEXT NOT NULL PRIMARY KEY,
+  ledger_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  amount REAL NOT NULL,
+  description TEXT NOT NULL,
+  at INTEGER NOT NULL,
+  envelope_id TEXT NULL,
+  from_id TEXT NULL,
+  to_id TEXT NULL
+)
+''');
+  raw.execute('''
+CREATE TABLE app_settings (
+  ledger_id TEXT NOT NULL PRIMARY KEY,
+  to_budget REAL NOT NULL,
+  carryover_default INTEGER NOT NULL DEFAULT 1,
+  currency TEXT NOT NULL DEFAULT '¥'
+)
+''');
+  raw.execute(
+    "INSERT INTO ledgers (id, name, onboarded, last_period_start, "
+    "period_type, sort_order, created_at) "
+    "VALUES ('lg1', 'v4账本', 1, '2026-09-01', 'naturalMonth', 0, 0)",
+  );
+  raw.execute(
+    "INSERT INTO envelopes (id, ledger_id, name, icon, color, planned, used, "
+    "carryover, sort_order) "
+    "VALUES ('e1', 'lg1', '餐饮', 'food', 'clay', 100.0, 40.0, 1, 0)",
+  );
+  raw.execute(
+    "INSERT INTO app_settings (ledger_id, to_budget, carryover_default, "
+    "currency) VALUES ('lg1', 500.0, 1, '¥')",
+  );
+  raw.execute('PRAGMA user_version = 4');
 }
 
 void main() {
@@ -271,6 +343,67 @@ void main() {
         database.appSettings,
       )..where((s) => s.ledgerId.equals(ledger.id))).getSingle();
       expect(setting.currency, '¥');
+      await database.close();
+    });
+  });
+
+  // ── 1c. 迁移 v4 → v5（描述历史，v1.3.0 票 02 / ADR-0020）──
+  group('迁移 v4→v5：新增描述历史表', () {
+    test('建表成功且可读写，存量账本/信封/设置不丢', () async {
+      final database = db.EnvelopeDatabase(
+        NativeDatabase.memory(setup: (raw) => _setupV4Db(raw)),
+      );
+      // 存量数据原样
+      final ledger = await (database.select(
+        database.ledgers,
+      )..where((l) => l.id.equals('lg1'))).getSingle();
+      expect(ledger.name, 'v4账本');
+      expect(ledger.lastPeriodStart, '2026-09-01');
+      final setting = await (database.select(
+        database.appSettings,
+      )..where((s) => s.ledgerId.equals('lg1'))).getSingle();
+      expect(setting.currency, '¥');
+      expect(setting.toBudget, 500.0);
+      // 新表可写可读（迁移前不存在）
+      await database
+          .into(database.descriptionHistory)
+          .insert(
+            db.DescriptionHistoryCompanion.insert(
+              ledgerId: 'lg1',
+              envelopeId: 'e1',
+              description: '午饭',
+              lastUsedAt: DateTime(2026, 9, 28, 12),
+            ),
+          );
+      final rows = await database.select(
+        database.descriptionHistory,
+      ).get();
+      expect(rows.single.description, '午饭');
+      await database.close();
+    });
+
+    test('升级后经仓库通道记录历史（真实路径冒烟）', () async {
+      final database = db.EnvelopeDatabase(
+        NativeDatabase.memory(setup: (raw) => _setupV4Db(raw)),
+      );
+      final repo = AppRepository(database);
+      await repo.addTransaction(
+        ledgerId: 'lg1',
+        fallback: '餐饮',
+        recordHistoryFor: const ['e1'],
+        txn: Txn(
+          id: 'tx-1',
+          type: TxType.expense,
+          amount: 12,
+          description: '午饭',
+          at: DateTime(2026, 9, 28, 12),
+          envelopeId: 'e1',
+        ),
+      );
+      final rows = await database.select(
+        database.descriptionHistory,
+      ).get();
+      expect(rows.single.description, '午饭');
       await database.close();
     });
   });

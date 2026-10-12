@@ -73,6 +73,18 @@ class ProfileController extends Notifier<UserProfile> {
 
   // 从相册选取的源文件拷贝进应用私有目录并记录路径；替换成功后清理旧文件
   Future<void> setAvatarFrom(String sourcePath) async {
+    await _commitAvatar((target) => File(sourcePath).copy(target));
+  }
+
+  // 裁剪结果字节直接写入私有目录（v1.3.0 票 04：换头像先裁剪）
+  Future<void> setAvatarBytes(List<int> bytes) async {
+    await _commitAvatar((target) => File(target).writeAsBytes(bytes));
+  }
+
+  // 头像落库共用段：唯一文件名 + 写入 + 更新状态与偏好 + 清理旧文件
+  Future<void> _commitAvatar(
+    Future<void> Function(String target) write,
+  ) async {
     final docs = await _supportDirectory();
     final dir = Directory('${docs.path}/avatar');
     await dir.create(recursive: true);
@@ -82,7 +94,7 @@ class ProfileController extends Notifier<UserProfile> {
     final target =
         '${dir.path}/avatar-${DateTime.now().millisecondsSinceEpoch}'
         '-${_avatarSeq++}.png';
-    await File(sourcePath).copy(target);
+    await write(target);
 
     final old = state.avatarPath;
     state = UserProfile(

@@ -1,7 +1,8 @@
-// 编辑资料页 — 头像（相册选图→拷贝私有目录）+ 昵称 + 签名（profile-polish 票）。
+// 编辑资料页 — 头像（相册选图→方形裁剪→写私有目录）+ 昵称 + 签名（profile-polish 票）。
 // 装饰性数据：shared_preferences 存储，不进备份、不做云同步；长度限 12/30。
 // 从「我的」页用户卡进入；保存后数据流自动刷新用户卡。
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../state/profile.dart';
 import '../../../theme/tokens.dart';
 import '../../copy.dart';
+import '../../common/image_crop_page.dart';
 import '../../keypad/keypad_flow.dart';
 
 /// 编辑资料页 — 头像、昵称、签名三段式表单；保存即落 shared_preferences。
@@ -45,13 +47,30 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
 
   // ── 动作 ──
 
-  // 相册选图 → 拷贝进应用私有目录 → 更新资料
+  // 相册选图 → 方形裁剪（v1.3.0 票 04）→ 写私有目录 → 更新资料；
+  // 任一步取消都不改动原头像
   Future<void> _pickAvatar() async {
     final picked = await FilePicker.platform.pickFiles(type: FileType.image);
     final path = picked?.files.single.path;
     if (path == null || !mounted) return; // 用户取消
+    Uint8List bytes;
     try {
-      await ref.read(profileProvider.notifier).setAvatarFrom(path);
+      bytes = await File(path).readAsBytes();
+    } on FileSystemException {
+      if (mounted) appToast(context, avatarPickFailedToast);
+      return;
+    }
+    if (!mounted) return;
+    final cropped = await showImageCropPage(
+      context,
+      image: bytes,
+      aspectRatio: 1,
+      title: '裁剪头像',
+      maxSide: 512,
+    );
+    if (cropped == null || !mounted) return; // 裁剪界面取消
+    try {
+      await ref.read(profileProvider.notifier).setAvatarBytes(cropped);
       if (mounted) setState(() {}); // 刷新头像区
     } on FileSystemException {
       if (mounted) appToast(context, avatarPickFailedToast);

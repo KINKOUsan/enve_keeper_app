@@ -2097,6 +2097,345 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   }
 }
 
+class $DescriptionHistoryTable extends DescriptionHistory
+    with TableInfo<$DescriptionHistoryTable, DescriptionHistoryData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DescriptionHistoryTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _ledgerIdMeta = const VerificationMeta(
+    'ledgerId',
+  );
+  @override
+  late final GeneratedColumn<String> ledgerId = GeneratedColumn<String>(
+    'ledger_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _envelopeIdMeta = const VerificationMeta(
+    'envelopeId',
+  );
+  @override
+  late final GeneratedColumn<String> envelopeId = GeneratedColumn<String>(
+    'envelope_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastUsedAtMeta = const VerificationMeta(
+    'lastUsedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastUsedAt = GeneratedColumn<DateTime>(
+    'last_used_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    ledgerId,
+    envelopeId,
+    description,
+    lastUsedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'description_history';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DescriptionHistoryData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('ledger_id')) {
+      context.handle(
+        _ledgerIdMeta,
+        ledgerId.isAcceptableOrUnknown(data['ledger_id']!, _ledgerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ledgerIdMeta);
+    }
+    if (data.containsKey('envelope_id')) {
+      context.handle(
+        _envelopeIdMeta,
+        envelopeId.isAcceptableOrUnknown(data['envelope_id']!, _envelopeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_envelopeIdMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('last_used_at')) {
+      context.handle(
+        _lastUsedAtMeta,
+        lastUsedAt.isAcceptableOrUnknown(
+          data['last_used_at']!,
+          _lastUsedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastUsedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {ledgerId, envelopeId, description};
+  @override
+  DescriptionHistoryData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DescriptionHistoryData(
+      ledgerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ledger_id'],
+      )!,
+      envelopeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}envelope_id'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      lastUsedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_used_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DescriptionHistoryTable createAlias(String alias) {
+    return $DescriptionHistoryTable(attachedDatabase, alias);
+  }
+}
+
+class DescriptionHistoryData extends DataClass
+    implements Insertable<DescriptionHistoryData> {
+  final String ledgerId;
+
+  /// 信封 id，或 'toBudget'（待规划是独立的历史域）
+  final String envelopeId;
+  final String description;
+
+  /// 最近一次输入时刻（排序与 LRU 淘汰依据）
+  final DateTime lastUsedAt;
+  const DescriptionHistoryData({
+    required this.ledgerId,
+    required this.envelopeId,
+    required this.description,
+    required this.lastUsedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['ledger_id'] = Variable<String>(ledgerId);
+    map['envelope_id'] = Variable<String>(envelopeId);
+    map['description'] = Variable<String>(description);
+    map['last_used_at'] = Variable<DateTime>(lastUsedAt);
+    return map;
+  }
+
+  DescriptionHistoryCompanion toCompanion(bool nullToAbsent) {
+    return DescriptionHistoryCompanion(
+      ledgerId: Value(ledgerId),
+      envelopeId: Value(envelopeId),
+      description: Value(description),
+      lastUsedAt: Value(lastUsedAt),
+    );
+  }
+
+  factory DescriptionHistoryData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DescriptionHistoryData(
+      ledgerId: serializer.fromJson<String>(json['ledgerId']),
+      envelopeId: serializer.fromJson<String>(json['envelopeId']),
+      description: serializer.fromJson<String>(json['description']),
+      lastUsedAt: serializer.fromJson<DateTime>(json['lastUsedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'ledgerId': serializer.toJson<String>(ledgerId),
+      'envelopeId': serializer.toJson<String>(envelopeId),
+      'description': serializer.toJson<String>(description),
+      'lastUsedAt': serializer.toJson<DateTime>(lastUsedAt),
+    };
+  }
+
+  DescriptionHistoryData copyWith({
+    String? ledgerId,
+    String? envelopeId,
+    String? description,
+    DateTime? lastUsedAt,
+  }) => DescriptionHistoryData(
+    ledgerId: ledgerId ?? this.ledgerId,
+    envelopeId: envelopeId ?? this.envelopeId,
+    description: description ?? this.description,
+    lastUsedAt: lastUsedAt ?? this.lastUsedAt,
+  );
+  DescriptionHistoryData copyWithCompanion(DescriptionHistoryCompanion data) {
+    return DescriptionHistoryData(
+      ledgerId: data.ledgerId.present ? data.ledgerId.value : this.ledgerId,
+      envelopeId: data.envelopeId.present
+          ? data.envelopeId.value
+          : this.envelopeId,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      lastUsedAt: data.lastUsedAt.present
+          ? data.lastUsedAt.value
+          : this.lastUsedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DescriptionHistoryData(')
+          ..write('ledgerId: $ledgerId, ')
+          ..write('envelopeId: $envelopeId, ')
+          ..write('description: $description, ')
+          ..write('lastUsedAt: $lastUsedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(ledgerId, envelopeId, description, lastUsedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DescriptionHistoryData &&
+          other.ledgerId == this.ledgerId &&
+          other.envelopeId == this.envelopeId &&
+          other.description == this.description &&
+          other.lastUsedAt == this.lastUsedAt);
+}
+
+class DescriptionHistoryCompanion
+    extends UpdateCompanion<DescriptionHistoryData> {
+  final Value<String> ledgerId;
+  final Value<String> envelopeId;
+  final Value<String> description;
+  final Value<DateTime> lastUsedAt;
+  final Value<int> rowid;
+  const DescriptionHistoryCompanion({
+    this.ledgerId = const Value.absent(),
+    this.envelopeId = const Value.absent(),
+    this.description = const Value.absent(),
+    this.lastUsedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DescriptionHistoryCompanion.insert({
+    required String ledgerId,
+    required String envelopeId,
+    required String description,
+    required DateTime lastUsedAt,
+    this.rowid = const Value.absent(),
+  }) : ledgerId = Value(ledgerId),
+       envelopeId = Value(envelopeId),
+       description = Value(description),
+       lastUsedAt = Value(lastUsedAt);
+  static Insertable<DescriptionHistoryData> custom({
+    Expression<String>? ledgerId,
+    Expression<String>? envelopeId,
+    Expression<String>? description,
+    Expression<DateTime>? lastUsedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (ledgerId != null) 'ledger_id': ledgerId,
+      if (envelopeId != null) 'envelope_id': envelopeId,
+      if (description != null) 'description': description,
+      if (lastUsedAt != null) 'last_used_at': lastUsedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DescriptionHistoryCompanion copyWith({
+    Value<String>? ledgerId,
+    Value<String>? envelopeId,
+    Value<String>? description,
+    Value<DateTime>? lastUsedAt,
+    Value<int>? rowid,
+  }) {
+    return DescriptionHistoryCompanion(
+      ledgerId: ledgerId ?? this.ledgerId,
+      envelopeId: envelopeId ?? this.envelopeId,
+      description: description ?? this.description,
+      lastUsedAt: lastUsedAt ?? this.lastUsedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (ledgerId.present) {
+      map['ledger_id'] = Variable<String>(ledgerId.value);
+    }
+    if (envelopeId.present) {
+      map['envelope_id'] = Variable<String>(envelopeId.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (lastUsedAt.present) {
+      map['last_used_at'] = Variable<DateTime>(lastUsedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DescriptionHistoryCompanion(')
+          ..write('ledgerId: $ledgerId, ')
+          ..write('envelopeId: $envelopeId, ')
+          ..write('description: $description, ')
+          ..write('lastUsedAt: $lastUsedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$EnvelopeDatabase extends GeneratedDatabase {
   _$EnvelopeDatabase(QueryExecutor e) : super(e);
   $EnvelopeDatabaseManager get managers => $EnvelopeDatabaseManager(this);
@@ -2104,6 +2443,8 @@ abstract class _$EnvelopeDatabase extends GeneratedDatabase {
   late final $EnvelopesTable envelopes = $EnvelopesTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $DescriptionHistoryTable descriptionHistory =
+      $DescriptionHistoryTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2113,6 +2454,7 @@ abstract class _$EnvelopeDatabase extends GeneratedDatabase {
     envelopes,
     transactions,
     appSettings,
+    descriptionHistory,
   ];
 }
 
@@ -3151,6 +3493,206 @@ typedef $$AppSettingsTableProcessedTableManager =
       AppSetting,
       PrefetchHooks Function()
     >;
+typedef $$DescriptionHistoryTableCreateCompanionBuilder =
+    DescriptionHistoryCompanion Function({
+      required String ledgerId,
+      required String envelopeId,
+      required String description,
+      required DateTime lastUsedAt,
+      Value<int> rowid,
+    });
+typedef $$DescriptionHistoryTableUpdateCompanionBuilder =
+    DescriptionHistoryCompanion Function({
+      Value<String> ledgerId,
+      Value<String> envelopeId,
+      Value<String> description,
+      Value<DateTime> lastUsedAt,
+      Value<int> rowid,
+    });
+
+class $$DescriptionHistoryTableFilterComposer
+    extends Composer<_$EnvelopeDatabase, $DescriptionHistoryTable> {
+  $$DescriptionHistoryTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get ledgerId => $composableBuilder(
+    column: $table.ledgerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get envelopeId => $composableBuilder(
+    column: $table.envelopeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastUsedAt => $composableBuilder(
+    column: $table.lastUsedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DescriptionHistoryTableOrderingComposer
+    extends Composer<_$EnvelopeDatabase, $DescriptionHistoryTable> {
+  $$DescriptionHistoryTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get ledgerId => $composableBuilder(
+    column: $table.ledgerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get envelopeId => $composableBuilder(
+    column: $table.envelopeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastUsedAt => $composableBuilder(
+    column: $table.lastUsedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DescriptionHistoryTableAnnotationComposer
+    extends Composer<_$EnvelopeDatabase, $DescriptionHistoryTable> {
+  $$DescriptionHistoryTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get ledgerId =>
+      $composableBuilder(column: $table.ledgerId, builder: (column) => column);
+
+  GeneratedColumn<String> get envelopeId => $composableBuilder(
+    column: $table.envelopeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastUsedAt => $composableBuilder(
+    column: $table.lastUsedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$DescriptionHistoryTableTableManager
+    extends
+        RootTableManager<
+          _$EnvelopeDatabase,
+          $DescriptionHistoryTable,
+          DescriptionHistoryData,
+          $$DescriptionHistoryTableFilterComposer,
+          $$DescriptionHistoryTableOrderingComposer,
+          $$DescriptionHistoryTableAnnotationComposer,
+          $$DescriptionHistoryTableCreateCompanionBuilder,
+          $$DescriptionHistoryTableUpdateCompanionBuilder,
+          (
+            DescriptionHistoryData,
+            BaseReferences<
+              _$EnvelopeDatabase,
+              $DescriptionHistoryTable,
+              DescriptionHistoryData
+            >,
+          ),
+          DescriptionHistoryData,
+          PrefetchHooks Function()
+        > {
+  $$DescriptionHistoryTableTableManager(
+    _$EnvelopeDatabase db,
+    $DescriptionHistoryTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DescriptionHistoryTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DescriptionHistoryTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DescriptionHistoryTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> ledgerId = const Value.absent(),
+                Value<String> envelopeId = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<DateTime> lastUsedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DescriptionHistoryCompanion(
+                ledgerId: ledgerId,
+                envelopeId: envelopeId,
+                description: description,
+                lastUsedAt: lastUsedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String ledgerId,
+                required String envelopeId,
+                required String description,
+                required DateTime lastUsedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DescriptionHistoryCompanion.insert(
+                ledgerId: ledgerId,
+                envelopeId: envelopeId,
+                description: description,
+                lastUsedAt: lastUsedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DescriptionHistoryTableProcessedTableManager =
+    ProcessedTableManager<
+      _$EnvelopeDatabase,
+      $DescriptionHistoryTable,
+      DescriptionHistoryData,
+      $$DescriptionHistoryTableFilterComposer,
+      $$DescriptionHistoryTableOrderingComposer,
+      $$DescriptionHistoryTableAnnotationComposer,
+      $$DescriptionHistoryTableCreateCompanionBuilder,
+      $$DescriptionHistoryTableUpdateCompanionBuilder,
+      (
+        DescriptionHistoryData,
+        BaseReferences<
+          _$EnvelopeDatabase,
+          $DescriptionHistoryTable,
+          DescriptionHistoryData
+        >,
+      ),
+      DescriptionHistoryData,
+      PrefetchHooks Function()
+    >;
 
 class $EnvelopeDatabaseManager {
   final _$EnvelopeDatabase _db;
@@ -3163,4 +3705,6 @@ class $EnvelopeDatabaseManager {
       $$TransactionsTableTableManager(_db, _db.transactions);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$DescriptionHistoryTableTableManager get descriptionHistory =>
+      $$DescriptionHistoryTableTableManager(_db, _db.descriptionHistory);
 }

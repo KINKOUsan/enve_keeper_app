@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 统计卡片（v1.3.0 票 09 / ADR-0021）：4×2 长方形，可缩放。
+     数字与位图由 App 推送；updatePeriodMillis=30 分钟——原生侧按到期毫秒
+     重算「还剩 N 天」，跨天不开 App 也更新（ADR-0021 的兜底刷新）。 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="220dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="1800000"
+    android:configure="com.example.enve_keeper_app.WidgetConfigureActivity"
+    android:widgetFeatures="reconfigurable"
+    android:description="@string/stats_widget_description"
+    android:initialLayout="@layout/stats_widget" />

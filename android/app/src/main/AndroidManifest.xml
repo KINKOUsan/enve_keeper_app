@@ -32,6 +32,60 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- 桌面小组件·信封卡片（v1.3.0 票 05 / ADR-0021）：
+             数据由 Flutter 推送，无权限声明、无后台服务。exported=true 与
+             home_widget 官方示例一致（OEM 桌面对组件接收器的交互更宽容） -->
+        <receiver
+            android:name=".EnvelopeWidgetProvider"
+            android:exported="true"
+            android:label="@string/envelope_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/envelope_widget_info"/>
+        </receiver>
+        <!-- 统计卡片（v1.3.0 票 09 / ADR-0021）：数字与可视化位图由 Flutter 推送，
+             每 30 分钟由系统触发一次刷新（「还剩 N 天」跨天更新） -->
+        <receiver
+            android:name=".StatsWidgetProvider"
+            android:exported="true"
+            android:label="@string/stats_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/stats_widget_info"/>
+        </receiver>
+        <!-- 小组件配置入口（v1.3.0 票 07）：Android 12+ 长按「重新配置」进这里，
+             无界面中转 → 打开应用内编辑页；Android 11- 添加时先回 OK 保住占位组件 -->
+        <activity
+            android:name=".WidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE"/>
+            </intent-filter>
+        </activity>
+        <!-- 悬浮快速记账浮层（v1.3.0 票 14 / ADR-0021 增补）：点信封卡直达——
+             透明 Activity 盖在桌面上，窗口背景即遮罩，Flutter 复用数字键盘，
+             记完即关回桌面。单例（singleTask 防叠出双引擎），不入最近任务；
+             与主 App 同进程双引擎，数据同库（SQLite 锁保证一致），写后经
+             WidgetRefreshChannel 中转通知主引擎刷新。 -->
+        <activity
+            android:name=".QuickRecordActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/QuickRecordTheme"
+            android:excludeFromRecents="true"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

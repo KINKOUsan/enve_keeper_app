@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 小组件背景图上的半透明底衬（v1.3.0 票 08）：有自定义背景图时显示，
+     垫在文字/图形下保证可读性；圆角与卡片底一致。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#59000000" />
+    <corners android:radius="18dp" />
+</shape>

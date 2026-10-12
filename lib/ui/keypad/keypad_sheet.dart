@@ -14,14 +14,16 @@ import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../common/format.dart';
 import '../copy.dart';
+import '../txn/time_edit_sheet.dart';
 import 'keypad_models.dart';
 
-/// 打开数字键盘。提交时回调 [onConfirm]（金额已通过校验）。
+/// 打开数字键盘。提交时回调 [onConfirm]（金额已通过校验，[at] 为时间行草稿）。
 /// 返回是否成功提交。
 Future<bool> showKeypadSheet(
   BuildContext context,
   KeypadRequest request, {
-  required Future<void> Function(double amount, String note) onConfirm,
+  required Future<void> Function(double amount, String note, DateTime at)
+  onConfirm,
 }) async {
   final result = await showModalBottomSheet<bool>(
     context: context,
@@ -37,7 +39,8 @@ class _KeypadSheet extends ConsumerStatefulWidget {
   const _KeypadSheet({required this.request, required this.onConfirm});
 
   final KeypadRequest request;
-  final Future<void> Function(double amount, String note) onConfirm;
+  final Future<void> Function(double amount, String note, DateTime at)
+  onConfirm;
 
   @override
   ConsumerState<_KeypadSheet> createState() => _KeypadSheetState();
@@ -49,6 +52,13 @@ class _KeypadSheetState extends ConsumerState<_KeypadSheet> {
   Timer? _blink;
   final _noteCtrl = TextEditingController();
 
+  // 描述栏焦点：聚焦（输入法弹起）时在描述栏上方浮出历史候选胶囊（票 03）
+  final _noteFocus = FocusNode();
+
+  // 本次键盘会话的时间草稿（票 01 / ADR-0019）：默认当前时间，滚轮可改到
+  // 任意过去时刻（上限今天）；确认才随交易落库，关键盘即丢弃重置。
+  DateTime _at = DateTime.now();
+
   // 是否刚按过「=」（此刻 _expr 是求值结果；此时按数字应重新开始）
   bool _evaluated = false;
 
@@ -59,6 +69,10 @@ class _KeypadSheetState extends ConsumerState<_KeypadSheet> {
   void initState() {
     super.initState();
     _expr = widget.request.initialExpr ?? '';
+    // 焦点变化驱动候选胶囊显隐
+    _noteFocus.addListener(() {
+      if (mounted) setState(() {});
+    });
     // 光标闪烁（与原型同节奏）
     _blink = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _cursorOn = !_cursorOn);
@@ -72,6 +86,7 @@ class _KeypadSheetState extends ConsumerState<_KeypadSheet> {
   @override
   void dispose() {
     _blink?.cancel();
+    _noteFocus.dispose();
     _noteCtrl.dispose();
     super.dispose();
   }
@@ -199,6 +214,105 @@ class _KeypadSheetState extends ConsumerState<_KeypadSheet> {
     }
   }
 
+  // ── 时间行与历史候选（v1.3.0 票 01/03）─────────
+
+  // 改金额语境不显示时间行与候选：编辑不动时间、不记历史（不变量⑥/ADR-0019）
+  bool get _isEditAmount => widget.request.action == KeypadAction.editAmount;
+
+  // 本次键盘所对信封（含待规划）的 id 集：历史候选展示与记录归属共用同一映射
+  // （ADR-0020：支出记支出信封、收入记待规划、转移 from/to 两侧、分配/撤销记所对信封）
+  List<String> _historyEnvelopeIds() {
+    final r = widget.request;
+    return switch (r.action) {
+      KeypadAction.expense ||
+      KeypadAction.assign ||
+      KeypadAction.unassign => [r.envelopeId!],
+      KeypadAction.income => [kToBudget],
+      KeypadAction.transfer => [r.fromId!, r.envelopeId!],
+      KeypadAction.editAmount => const [],
+    };
+  }
+
+  // 时间行（票 01）：时钟图标 + 时刻文本 + 箭头，点击进滚轮弹层补记。
+  // 文本用 atLabel——非当年带年份（与详情页时间行同一条跨年规则）。
+  Widget _timeRow() {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _pickTime,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: SizedBox(
+          height: 26,
+          child: Row(
+            children: [
+              const Icon(
+                Icons.schedule_outlined,
+                size: 14,
+                color: T.textTertiary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                atLabel(_at, DateTime.now()),
+                style: const TextStyle(
+                  fontSize: T.typeXs,
+                  color: T.textSecondary,
+                ),
+              ),
+              const Spacer(),
+              const Icon(Icons.chevron_right, size: 16, color: T.textTertiary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 点时间行 → 复用详情页滚轮弹层（同一交互语言，ADR-0019：上限今天、无下限）
+  Future<void> _pickTime() async {
+    final picked = await showTimeEditSheet(context, initial: _at);
+    if (picked == null || !mounted) return;
+    setState(() => _at = picked);
+  }
+
+  // 历史候选胶囊行（票 03）：描述栏聚焦且该信封有历史时浮出；转移语境合并
+  // from/to 两侧（去重、最近优先）；点胶囊即填入并收起输入法。
+  Widget _historyChips() {
+    final ledger = ref.watch(activeLedgerProvider);
+    if (ledger == null) return const SizedBox.shrink();
+    final seen = <String>{};
+    final chips = <String>[];
+    for (final id in _historyEnvelopeIds()) {
+      final list =
+          ref.watch(descriptionHistoryProvider((ledger.id, id))).value ??
+          const <String>[];
+      for (final d in list) {
+        if (seen.add(d) && chips.length < kDescriptionHistoryLimit) {
+          chips.add(d);
+        }
+      }
+    }
+    if (chips.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+      child: SizedBox(
+        height: 34,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: chips.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (_, i) => _QuickChip(
+            label: chips[i],
+            onTap: () {
+              _noteCtrl.text = chips[i];
+              // 点候选 = 完成输入：填入并收起输入法
+              _noteFocus.unfocus();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   // ── 提交 ─────────────────────────────────────
 
   // 普通按键：数字 / 运算符 / 括号 / 小数点 / C 清空
@@ -266,7 +380,7 @@ class _KeypadSheetState extends ConsumerState<_KeypadSheet> {
     if (_check(s, v, ref.read(currencySymbolProvider)).hard) return;
     final note = _noteCtrl.text.trim();
     Navigator.of(context).pop(true);
-    await widget.onConfirm(v, note);
+    await widget.onConfirm(v, note, _at);
   }
 
   @override
@@ -380,6 +494,15 @@ class _KeypadSheetState extends ConsumerState<_KeypadSheet> {
               ),
             ),
             const SizedBox(height: 6),
+            // 时间行（v1.3.0 票 01 / ADR-0019）：默认当前时间，点击滚轮补记到
+            // 任意过去时刻（上限今天）；改金额语境不显示（编辑不动时间）
+            if (!_isEditAmount) ...[
+              _timeRow(),
+              const SizedBox(height: 6),
+            ],
+            // 历史候选胶囊（v1.3.0 票 03）：描述栏聚焦（输入法弹起）时浮出；
+            // 无历史 / 改金额语境不占位
+            if (!_isEditAmount && _noteFocus.hasFocus) _historyChips(),
             // 描述栏（整张键盘唯一的选填字段）
             Container(
               height: 36,
@@ -400,6 +523,7 @@ class _KeypadSheetState extends ConsumerState<_KeypadSheet> {
                   Expanded(
                     child: TextField(
                       controller: _noteCtrl,
+                      focusNode: _noteFocus,
                       style: const TextStyle(
                         fontSize: T.typeBase,
                         color: T.textPrimary,

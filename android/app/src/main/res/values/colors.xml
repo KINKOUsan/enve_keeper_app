@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 悬浮快速记账浮层遮罩（v1.3.0 票 14）：50% 黑，作为 QuickRecordTheme
+     的窗口背景——比组件底衬（35%）重，比键盘弹层遮罩（34%，叠加后合计
+     约 67%）轻，保证键盘弹出前后遮罩观感连续。 -->
+<resources>
+    <color name="quick_record_scrim">#80000000</color>
+</resources>

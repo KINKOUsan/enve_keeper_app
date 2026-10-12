@@ -1,9 +1,12 @@
 // 底部导航壳 — 4 个一级 Tab（信封 / 流水 / 统计 / 我的）。
 // 视觉：底 80 = 1px 分割线 + 55 导航行 + 24 手势留白（§3 布局；票 08 起不再绘制模拟导航横条）。
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/models.dart';
+import '../../home_widget/widget_routes.dart';
 import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import 'home/gesture_coach.dart';
@@ -33,16 +36,56 @@ class _AppShellState extends ConsumerState<AppShell> {
   // 本次会话是否已处理过自动触发（防重复弹）
   bool _autoCoachHandled = false;
 
+  // 桌面小组件点击分发订阅（v1.3.0 票 06：快速记账直达键盘 / 进编辑页）
+  StreamSubscription<Uri?>? _widgetClickSub;
+
+  // 冷启动与热启动可能对同一次点击各送一次（launch intent + 事件流）：
+  // 短窗口内同一路由去重
+  String? _lastRouteKey;
+  DateTime _lastRouteAt = DateTime.fromMillisecondsSinceEpoch(0);
+
   @override
   void initState() {
     super.initState();
     _homeGesture = HomeController();
+    _widgetClickSub = installWidgetRouteDispatcher(
+      context,
+      ref,
+      _onWidgetRoute,
+    );
   }
 
   @override
   void dispose() {
+    _widgetClickSub?.cancel();
     _homeGesture.dispose();
     super.dispose();
+  }
+
+  // 收到一条组件点击路由：去重后执行。
+  // 组件发起的导航一律先弹回首页基座（票 15 二轮：上次编辑页/键盘留下的
+  // 半截路由还压在栈里，深链把新页叠上来，返回时就落回旧页面——
+  // 「编辑 B 完成后回到没编辑完的 A」）。去重先行：3 秒窗口内的重复投递
+  // （冷/热双送）不能把刚推的页面弹掉。
+  void _onWidgetRoute(WidgetRoute route) {
+    final key = switch (route) {
+      WidgetQuickRecord(:final envelopeId) => 'record:$envelopeId',
+      WidgetEditRoute(:final widgetId) => 'edit:$widgetId',
+      WidgetStatsRoute() => 'stats',
+    };
+    final now = DateTime.now();
+    if (key == _lastRouteKey &&
+        now.difference(_lastRouteAt) < const Duration(seconds: 3)) {
+      return;
+    }
+    _lastRouteKey = key;
+    _lastRouteAt = now;
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    if (route is WidgetStatsRoute) {
+      setState(() => _index = 2);
+      return;
+    }
+    unawaited(runWidgetRoute(context, ref, route));
   }
 
   // 关掉引导遮罩：走完或跳过都标记「已看过」，之后只从我的页重看

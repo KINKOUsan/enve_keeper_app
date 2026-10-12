@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 桌面小组件·信封卡片（v1.3.0 票 05 / ADR-0021） -->
+    <string name="envelope_widget_label">金打细算 · 信封</string>
+    <string name="envelope_widget_description">信封剩余金额小卡片，随记账即时同步</string>
+    <string name="envelope_widget_placeholder_title">未配置</string>
+    <string name="envelope_widget_placeholder_hint">点按这里完成配置</string>
+    <!-- 统计卡片（票 09） -->
+    <string name="stats_widget_label">金打细算 · 统计</string>
+    <string name="stats_widget_description">统计页的浓缩：数字摘要与支出可视化</string>
+    <string name="stats_field_planned">已规划</string>
+    <string name="stats_field_used">已使用</string>
+    <string name="stats_field_left">剩余</string>
+</resources>

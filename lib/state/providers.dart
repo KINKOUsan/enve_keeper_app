@@ -101,6 +101,18 @@ final currencySymbolProvider = Provider<String>((ref) {
   return ref.watch(settingsProvider).value?.currency ?? kDefaultCurrency;
 });
 
+// ── 描述历史（v1.3.0 票 03 / ADR-0020）─────────────
+
+// 某信封（或待规划 kToBudget）的描述历史流（最近优先，最多 8 条）——
+// 键盘候选胶囊用。参数：(账本 id, 信封 id)。
+final descriptionHistoryProvider =
+    StreamProvider.family<List<String>, (String, String)>((ref, key) {
+      final (ledgerId, envelopeId) = key;
+      return ref
+          .watch(repoProvider)
+          .watchDescriptionHistory(ledgerId, envelopeId);
+    });
+
 // 引擎输入：当前账本状态快照（信封 + 待规划）
 final ledgerStateProvider = Provider<LedgerState>((ref) {
   final envelopes = ref.watch(envelopesProvider).value ?? const <Envelope>[];

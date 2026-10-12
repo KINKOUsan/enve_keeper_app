@@ -20,6 +20,7 @@ import 'csv_export.dart';
 import 'about_page.dart';
 import 'profile_edit_page.dart';
 import 'usage_guide_page.dart';
+import '../widgets/widget_guide_page.dart';
 import '../envelope/envelope_manage_page.dart';
 
 class ProfilePage extends ConsumerWidget {
@@ -137,6 +138,31 @@ class ProfilePage extends ConsumerWidget {
               title: '关于',
               rows: [
                 _RowData(
+                  icon: Icons.widgets_outlined,
+                  label: '桌面小部件',
+                  // 桌面小组件说明与实例管理（v1.3.0 票 07 / ADR-0021）
+                  // Beta 徽章（票 16）：主题黄底黑字胶囊，标注功能尚在迭代
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: T.primary,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      'Beta',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: T.textPrimary,
+                      ),
+                    ),
+                  ),
+                  onTap: () => _openWidgetGuide(context),
+                ),
+                _RowData(
                   icon: Icons.menu_book_outlined,
                   label: '使用说明',
                   onTap: () => _openUsageGuide(context),
@@ -222,6 +248,12 @@ class ProfilePage extends ConsumerWidget {
   void _openUsageGuide(BuildContext context) {
     Navigator.of(context)
         .push(AppPageRoute<void>(builder: (_) => const UsageGuidePage()));
+  }
+
+  // 进入桌面小部件说明页（v1.3.0 票 07）
+  void _openWidgetGuide(BuildContext context) {
+    Navigator.of(context)
+        .push(AppPageRoute<void>(builder: (_) => const WidgetGuidePage()));
   }
 }
 

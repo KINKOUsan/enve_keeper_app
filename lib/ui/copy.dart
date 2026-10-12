@@ -467,3 +467,46 @@ String linkOpenFailedToast(String url) => '没能打开浏览器，请手动访�
 
 // 支持页开篇一句话
 const supportIntroBody = '金打细算完全免费，如果它帮到了你，可以请作者喝一杯。';
+
+// ── 桌面小部件（v1.3.0 票 07）────────────────
+// 注意：以下说明段是按用户手写使用说明的行文风格（平实完整句、「使用者」
+// 相称）起草的草稿（2026-09-28）——交用户逐字改定前不算定稿（票 07 验收项），
+// 用户改定后逐字替换、不改写不压缩。
+
+// 说明页开篇段
+const widgetGuideIntroBody =
+    '「金打细算」提供桌面小组件，可将个别信封与近段时间的统计数据展示在系统桌面上。该功能处于测试中功能，可能会由于机型差异产生各种Bug。';
+
+// 「如何添加」节
+const widgetGuideAddTitle = '如何添加';
+const widgetGuideAddBody =
+    '在桌面空白处长按，选择「小组件」（部分手机称为「窗口小工具」或'
+    '「小部件」等），在列表里找到「金打细算」，把需要的卡片放到桌面。'
+    '新添加卡片会引导至卡片编辑页面。';
+
+// 「编辑与重新配置」节
+const widgetGuideManageTitle = '编辑与重新配置';
+const widgetGuideManageBody =
+    '信封卡片在绑定后，点按即可快速记账：'
+    '若想更换绑定的信封或调整字体颜色，可以长按组件选择重新配置；'
+    '在系统版本较低或其他情况时，也可从本页下方的列表进入编辑。';
+
+// 实例列表为空时的说明
+const widgetGuideEmptyBody = '还没有已添加的小组件';
+
+// 组件编辑页（短标签 + 提示）
+const widgetEditTitle = '编辑小组件';
+const widgetEditEnvelopeSection = '绑定信封';
+const widgetEditNoEnvelopeBody = '当前账本还没有在用的信封，先去添加一个吧。';
+const widgetEditFontColorSection = '字体颜色';
+const widgetEditFontColorHint = '带「建议」的一项按信封底色的明暗自动推荐；换绑信封后若未手动改过颜色，会跟随新建议。';
+const widgetEditSavedToast = '小组件已更新';
+
+// 组件编辑页·统计卡与背景图（v1.3.0 票 08/09 追加，短标签）
+const widgetEditStatsTitle = '编辑统计卡片';
+const widgetEditStatsRangeSection = '统计区间';
+const widgetEditStatsChartSection = '可视化';
+const widgetEditStatsChartHint = '环形图显示各信封的支出占比，柱状图显示选定时段内的支出趋势；保存后生效。';
+const widgetEditBgSection = '背景图';
+const widgetEditBgHint = '选择一张你喜欢的图片作为背景吧；清除后恢复默认。';
+const widgetBgSaveFailedToast = '图片获取失败，换一张试试吧';

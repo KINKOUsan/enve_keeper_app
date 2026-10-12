@@ -88,6 +88,25 @@ class Transactions extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// 描述历史（v1.3.0 票 02 / ADR-0020）：每个信封（含待规划 'toBudget'）记住的、
+/// 用户在数字键盘**手动输入过**的描述。只有手输文字入史，兜底描述不入；
+/// 同信封重复输入上浮不重复；每信封保留最近 N 条（kDescriptionHistoryLimit）。
+/// 独立于交易存在——撤销/删除交易不触碰本表。
+class DescriptionHistory extends Table {
+  TextColumn get ledgerId => text()();
+
+  /// 信封 id，或 'toBudget'（待规划是独立的历史域）
+  TextColumn get envelopeId => text()();
+
+  TextColumn get description => text()();
+
+  /// 最近一次输入时刻（排序与 LRU 淘汰依据）
+  DateTimeColumn get lastUsedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {ledgerId, envelopeId, description};
+}
+
 /// 每账本一份的设置
 class AppSettings extends Table {
   TextColumn get ledgerId => text()();

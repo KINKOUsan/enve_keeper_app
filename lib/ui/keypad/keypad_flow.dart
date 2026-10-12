@@ -12,11 +12,14 @@ import 'keypad_sheet.dart';
 /// 打开数字键盘，确认后按动作语境构建交易并落库。返回是否成功提交。
 ///
 /// [context] 必须是页面级 context（键盘弹出/关闭后仍有效，用于提示）。
+/// [onToast] 可选：每次结果提示的文案回调（悬浮记账浮层用——App 内的
+/// SnackBar 随浮层关闭即逝，系统级 toast 需另行呈现，见票 14）。
 Future<bool> runKeypadFlow(
   BuildContext context,
   WidgetRef ref,
-  KeypadRequest request,
-) async {
+  KeypadRequest request, {
+  void Function(String message)? onToast,
+}) async {
   final repo = ref.read(repoProvider);
   final ledger = ref.read(activeLedgerProvider);
   if (ledger == null) return false;
@@ -27,7 +30,7 @@ Future<bool> runKeypadFlow(
   final ok = await showKeypadSheet(
     context,
     request,
-    onConfirm: (amount, note) async {
+    onConfirm: (amount, note, at) async {
       // 提交瞬间重新读一次状态，保证兜底描述里的信封名是当前的
       final state = ref.read(ledgerStateProvider);
 
@@ -45,7 +48,9 @@ Future<bool> runKeypadFlow(
             ledgerId: ledgerId,
             envelopeId: request.envelopeId!,
             amount: amount,
+            at: at,
             note: note,
+            onToast: onToast,
           );
 
         case KeypadAction.unassign:
@@ -62,15 +67,16 @@ Future<bool> runKeypadFlow(
               type: TxType.transfer,
               amount: amount,
               description: note,
-              at: DateTime.now(),
+              at: at,
               fromId: request.envelopeId,
               toId: kToBudget,
             ),
+            recordHistoryFor: [request.envelopeId!],
           );
-          _toast(messenger, toastUnassigned(amount));
+          _toast(messenger, toastUnassigned(amount), onToast);
 
         case KeypadAction.transfer:
-          // 信封 → 信封：零和，不计收支（不变量③）
+          // 信封 → 信封：零和，不计收支（不变量③）；描述历史记双侧（ADR-0020）
           await repo.addTransaction(
             ledgerId: ledgerId,
             fallback: fallbackDescription(
@@ -83,14 +89,16 @@ Future<bool> runKeypadFlow(
               type: TxType.transfer,
               amount: amount,
               description: note,
-              at: DateTime.now(),
+              at: at,
               fromId: request.fromId,
               toId: request.envelopeId,
             ),
+            recordHistoryFor: [request.fromId!, request.envelopeId!],
           );
           _toast(
             messenger,
             toastTransferredOut(envName(request.fromId), amount),
+            onToast,
           );
 
         case KeypadAction.expense:
@@ -108,19 +116,21 @@ Future<bool> runKeypadFlow(
               type: TxType.expense,
               amount: amount,
               description: note,
-              at: DateTime.now(),
+              at: at,
               envelopeId: request.envelopeId,
             ),
+            recordHistoryFor: [request.envelopeId!],
           );
           _toast(
             messenger,
             overdraft < 0
                 ? toastExpenseOverspent(e?.name, -overdraft)
                 : toastExpense(e?.name, amount),
+            onToast,
           );
 
         case KeypadAction.income:
-          // 收入只进 toBudget（不变量④）
+          // 收入只进 toBudget（不变量④）；描述历史记待规划（ADR-0020）
           await repo.addTransaction(
             ledgerId: ledgerId,
             fallback: fallbackDescription(type: TxType.income),
@@ -129,13 +139,15 @@ Future<bool> runKeypadFlow(
               type: TxType.income,
               amount: amount,
               description: note,
-              at: DateTime.now(),
+              at: at,
             ),
+            recordHistoryFor: [kToBudget],
           );
-          _toast(messenger, toastIncome(amount));
+          _toast(messenger, toastIncome(amount), onToast);
 
         case KeypadAction.editAmount:
-          // 不变量⑥：撤销旧的 + 施加新的；原型行为——填了描述则一并更新
+          // 不变量⑥：撤销旧的 + 施加新的；原型行为——填了描述则一并更新。
+          // 时间不动（ADR-0019：编辑语境不改时间）；描述编辑不回写历史（ADR-0020）
           final tx = request.editTx!;
           await repo.editTransactionAmount(
             ledgerId: ledgerId,
@@ -145,7 +157,7 @@ Future<bool> runKeypadFlow(
           if (note.isNotEmpty) {
             await repo.editTransactionDescription(tx.id, note);
           }
-          _toast(messenger, toastAmountEdited(amount));
+          _toast(messenger, toastAmountEdited(amount), onToast);
       }
     },
   );
@@ -155,13 +167,16 @@ Future<bool> runKeypadFlow(
 /// 分配提交（待规划 → 信封，不变量④收入进待规划后的唯一出口）。
 /// 供键盘流程与长按面板「快捷分配」共用；提交瞬间重读状态定型兜底描述（不变量⑤）。
 /// 超额校验在入口 UI（键盘/面板确定键置灰）执行，这里不再拦截。
+/// [at] 键盘流程传时间行草稿；面板快捷分配不传（默认当前时刻）。
 Future<void> submitAssign(
   ScaffoldMessengerState messenger,
   WidgetRef ref, {
   required String ledgerId,
   required String envelopeId,
   required double amount,
+  DateTime? at,
   String note = '',
+  void Function(String message)? onToast,
 }) async {
   final repo = ref.read(repoProvider);
   // 提交瞬间重新读一次状态，保证兜底描述里的信封名是当前的
@@ -179,12 +194,14 @@ Future<void> submitAssign(
       type: TxType.transfer,
       amount: amount,
       description: note,
-      at: DateTime.now(),
+      at: at ?? DateTime.now(),
       fromId: kToBudget,
       toId: envelopeId,
     ),
+    // 描述历史（ADR-0020）：分配记目标信封；手输为空时仓库侧不记
+    recordHistoryFor: [envelopeId],
   );
-  _toast(messenger, toastAssigned(amount, envName));
+  _toast(messenger, toastAssigned(amount, envName), onToast);
 }
 
 /// 轻提示 — 对齐原型的 toast：短文案、自动消失、不打断操作。
@@ -192,8 +209,14 @@ void appToast(BuildContext context, String text) {
   _toast(ScaffoldMessenger.of(context), text);
 }
 
-// 用 messenger 直接弹提示（供已跨 async 的回调使用，避免持有 context）
-void _toast(ScaffoldMessengerState messenger, String text) {
+// 用 messenger 直接弹提示（供已跨 async 的回调使用，避免持有 context）；
+// [onToast] 非空时同步回调文案（悬浮记账转系统级 toast，票 14）
+void _toast(
+  ScaffoldMessengerState messenger,
+  String text, [
+  void Function(String message)? onToast,
+]) {
+  onToast?.call(text);
   messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(

@@ -161,6 +161,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.1.2"
+  crop_your_image:
+    dependency: "direct main"
+    description:
+      name: crop_your_image
+      sha256: "8cd2936d5e2f1a23b330390df0c7e59d685892d63f374196e498905e0896cc2c"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.1"
   cross_file:
     dependency: transitive
     description:
@@ -317,6 +325,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.3.2"
+  home_widget:
+    dependency: "direct main"
+    description:
+      name: home_widget
+      sha256: "1dbfdfbb3b47de24639adfba352050d85d66af112b9cc3ec5bf7627a7813abcb"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.10.0"
   hooks:
     dependency: transitive
     description:
@@ -918,10 +934,10 @@ packages:
     dependency: transitive
     description:
       name: vector_math
-      sha256: f36f9f3be64c6198714492bb455c11056e33e2f85d9a0b676a48301e44fdcf47
+      sha256: "92b9910f66ed1057fd4da7b040ae7c74cafacf885bdc81be496928d5049b032d"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "2.4.2"
+    version: "2.4.3"
   vm_service:
     dependency: transitive
     description:

@@ -70,4 +70,20 @@ void main() {
     expect(File(path).existsSync(), isFalse);
     expect(prefs.getString('profile.avatarPath'), '');
   });
+
+  // v1.3.0 票 04：换头像先裁剪——裁剪结果字节直接写私有目录，
+  // 与文件拷贝通道同样保证「新文件名 + 旧文件清理」
+  test('裁剪字节入通道：内容即所写、路径唯一、旧头像被清理', () async {
+    final notifier = container.read(profileProvider.notifier);
+
+    await notifier.setAvatarFrom(await makeSource('a.png', [1, 2, 3]));
+    final first = container.read(profileProvider).avatarPath;
+
+    await notifier.setAvatarBytes([7, 7, 7, 7]);
+    final second = container.read(profileProvider).avatarPath;
+    expect(second, isNot(first));
+    expect(File(second).readAsBytesSync(), [7, 7, 7, 7]);
+    expect(File(first).existsSync(), isFalse);
+    expect(prefs.getString('profile.avatarPath'), second);
+  });
 }

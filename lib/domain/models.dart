@@ -9,6 +9,9 @@ const String kToBudget = 'toBudget';
 /// 符号仅为显示偏好，按账本独立存储，不换算、不追溯历史金额。
 const String kDefaultCurrency = '¥';
 
+/// 描述历史每信封保留的条数上限（ADR-0020）：超出淘汰最旧（LRU）。
+const int kDescriptionHistoryLimit = 8;
+
 /// 交易类型：支出 / 收入 / 转移 / 结转退回。
 /// 注意：分配（待规划→信封）与撤销（信封→待规划）在数据上都走 transfer，
 /// 以 fromId/toId 是否为 kToBudget 区分（见原型 confirmSheet 的实现）。

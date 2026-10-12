@@ -7,13 +7,15 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Ledgers, Envelopes, Transactions, AppSettings])
+@DriftDatabase(
+  tables: [Ledgers, Envelopes, Transactions, AppSettings, DescriptionHistory],
+)
 class EnvelopeDatabase extends _$EnvelopeDatabase {
   EnvelopeDatabase([QueryExecutor? executor])
     : super(executor ?? openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -42,6 +44,11 @@ class EnvelopeDatabase extends _$EnvelopeDatabase {
       // 账本设置表加 currency 列，存量行由列默认值（¥）回填，无需数据改写。
       if (from < 4) {
         await m.addColumn(appSettings, appSettings.currency);
+      }
+      // v5：描述历史（v1.3.0 票 02 / ADR-0020）——新增表，
+      // 无存量数据可回填（历史只记手输描述，从零开始积累）。
+      if (from < 5) {
+        await m.createTable(descriptionHistory);
       }
     },
   );

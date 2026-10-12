@@ -14,6 +14,9 @@ class MainActivity : FlutterActivity() {
     // 自动备份写公共目录的通道（v1.2.x 票 02 · ADR-0018）
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // 组件直调刷新通道（v1.3.0 票 12）+ 主引擎登记（票 14 悬浮记账中转）
+        WidgetRefreshChannel.install(flutterEngine, applicationContext)
+        WidgetRefreshChannel.registerMainEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "enve_keeper_app/autobackup")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -50,6 +53,12 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    // 主引擎销毁（用户退出 App）：清登记，防通知打到已销毁的引擎
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        WidgetRefreshChannel.registerMainEngine(null)
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     // 自动备份候选行：uri 定位内容，displayName 记名字，modifiedAt 是 MediaStore 的 epoch 秒

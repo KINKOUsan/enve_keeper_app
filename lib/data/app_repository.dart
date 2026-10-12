@@ -40,6 +40,11 @@ class AppRepository {
   AppRepository(this._db);
   final db.EnvelopeDatabase _db;
 
+  /// 通知本连接的全部 watch 流重查（v1.3.0 票 14）：
+  /// 悬浮记账在另一个引擎的 drift 连接上写库，本连接的流不会自动感知
+  /// 外部写入——主引擎收到原生中转的 dataChanged 后调这里强制重查。
+  void notifyExternalChanges() => _db.markTablesUpdated(_db.allTables);
+
   // ── 账本 ───────────────────────────────────
 
   /// 监听全部账本（创建顺序）
@@ -110,6 +115,9 @@ class AppRepository {
       await (_db.delete(
         _db.transactions,
       )..where((t) => t.ledgerId.equals(id))).go();
+      await (_db.delete(
+        _db.descriptionHistory,
+      )..where((h) => h.ledgerId.equals(id))).go();
       await (_db.delete(
         _db.envelopes,
       )..where((e) => e.ledgerId.equals(id))).go();
@@ -344,6 +352,44 @@ class AppRepository {
         .write(db.TransactionsCompanion(fromId: Value(toId)));
     await (_db.update(_db.transactions)..where((t) => t.toId.equals(fromId)))
         .write(db.TransactionsCompanion(toId: Value(toId)));
+    // 描述历史随行迁移（ADR-0020）：旧档历史并入恢复行，已存在的只补更晚时刻
+    final oldHistory =
+        await (_db.select(
+          _db.descriptionHistory,
+        )..where((h) => h.envelopeId.equals(fromId))).get();
+    for (final r in oldHistory) {
+      final existing =
+          await (_db.select(_db.descriptionHistory)..where(
+                (h) =>
+                    h.envelopeId.equals(toId) &
+                    h.description.equals(r.description),
+              ))
+              .getSingleOrNull();
+      if (existing == null) {
+        await _db
+            .into(_db.descriptionHistory)
+            .insert(
+              db.DescriptionHistoryCompanion.insert(
+                ledgerId: r.ledgerId,
+                envelopeId: toId,
+                description: r.description,
+                lastUsedAt: r.lastUsedAt,
+              ),
+            );
+      } else if (r.lastUsedAt.isAfter(existing.lastUsedAt)) {
+        await (_db.update(_db.descriptionHistory)..where(
+              (h) =>
+                  h.envelopeId.equals(toId) &
+                  h.description.equals(r.description),
+            ))
+            .write(
+              db.DescriptionHistoryCompanion(lastUsedAt: Value(r.lastUsedAt)),
+            );
+      }
+    }
+    await (_db.delete(
+      _db.descriptionHistory,
+    )..where((h) => h.envelopeId.equals(fromId))).go();
   }
 
   // ── 交易 ───────────────────────────────────
@@ -358,14 +404,16 @@ class AppRepository {
 
   /// 新增一笔交易：写交易行 + 施加引擎影响（同一事务）。
   /// [fallback] 是调用方按不变量⑤生成的兜底描述（写入时定型）。
+  /// [recordHistoryFor] 是描述历史的归属信封（ADR-0020，键盘流程按动作语境
+  /// 传入，待规划用 'toBudget'）；描述为兜底（未手输）时不记历史。
   Future<void> addTransaction({
     required String ledgerId,
     required Txn txn,
     required String fallback,
+    List<String> recordHistoryFor = const [],
   }) async {
-    final finalTxn = txn.description.isEmpty
-        ? txn.copyWith(description: fallback)
-        : txn;
+    final manualNote = txn.description.isNotEmpty;
+    final finalTxn = manualNote ? txn : txn.copyWith(description: fallback);
     await _db.transaction(() async {
       final state = await _loadState(ledgerId);
       final after = applyTx(state, finalTxn, kApply);
@@ -377,15 +425,22 @@ class AppRepository {
               ledgerId: ledgerId,
               type: txTypeToDb(finalTxn.type),
               amount: finalTxn.amount,
-              description: finalTxn.description.isEmpty
-                  ? fallback
-                  : finalTxn.description,
+              description: finalTxn.description,
               at: finalTxn.at,
               envelopeId: Value(finalTxn.envelopeId),
               fromId: Value(finalTxn.fromId),
               toId: Value(finalTxn.toId),
             ),
           );
+      // 描述历史（ADR-0020）：手输非空才记，与交易同一事务
+      if (manualNote && recordHistoryFor.isNotEmpty) {
+        await _recordDescriptionHistory(
+          ledgerId: ledgerId,
+          envelopeIds: recordHistoryFor,
+          description: txn.description,
+          at: finalTxn.at,
+        );
+      }
       await _writeBack(ledgerId, after);
     });
   }
@@ -503,6 +558,33 @@ class AppRepository {
     return rows.map((r) => r.id).toSet();
   }
 
+  // ── 一次性读取（v1.3.0 票 09：小组件推送用，避免为每个账本开常驻流）────
+
+  /// 某账本的在用信封（一次性；推送时读多账本用）
+  Future<List<Envelope>> getEnvelopesOnce(String ledgerId) async {
+    final rows = await (_db.select(
+      _db.envelopes,
+    )..where((e) => e.ledgerId.equals(ledgerId) & e.archivedAt.isNull()))
+        .get();
+    return rows.map(_envFromRow).toList();
+  }
+
+  /// 某账本的全部交易（一次性；统计卡聚合用）
+  Future<List<Txn>> getTransactionsOnce(String ledgerId) async {
+    final rows = await (_db.select(
+      _db.transactions,
+    )..where((t) => t.ledgerId.equals(ledgerId)))
+        .get();
+    return rows.map(_txnFromRow).toList();
+  }
+
+  /// 某账本的设置行（货币符号等；账本不存在返回 null）
+  Future<db.AppSetting?> getSettingsOnce(String ledgerId) async {
+    return (_db.select(
+      _db.appSettings,
+    )..where((s) => s.ledgerId.equals(ledgerId))).getSingleOrNull();
+  }
+
   /// 一笔流水是否涉及停用信封（envelopeId / fromId / toId 任一命中）
   bool _touchesArchived(Txn t, Set<String> archivedIds) {
     if (archivedIds.isEmpty) return false;
@@ -510,6 +592,71 @@ class AppRepository {
     return ids.any(
       (id) => id != null && id != kToBudget && archivedIds.contains(id),
     );
+  }
+
+  // ── 描述历史（ADR-0020）────────────────────
+
+  /// 监听某信封（或待规划 'toBudget'）的描述历史（最近使用优先，最多
+  /// kDescriptionHistoryLimit 条）——键盘候选胶囊用。
+  Stream<List<String>> watchDescriptionHistory(
+    String ledgerId,
+    String envelopeId,
+  ) {
+    final q = _db.select(_db.descriptionHistory)
+      ..where(
+        (h) => h.ledgerId.equals(ledgerId) & h.envelopeId.equals(envelopeId),
+      )
+      ..orderBy([
+        (h) => OrderingTerm.desc(h.lastUsedAt),
+        // 同时刻的并列项按描述字面稳定排序（测试可复现）
+        (h) => OrderingTerm.asc(h.description),
+      ]);
+    return q.watch().map((rows) => rows.map((r) => r.description).toList());
+  }
+
+  /// 记录一条描述历史：同信封重复输入上浮为最近，超出上限淘汰最旧。
+  /// 只在交易落库的同一事务内被 addTransaction 调用
+  /// （撤销/删除交易不走这里——历史与交易生死解耦，ADR-0020）。
+  Future<void> _recordDescriptionHistory({
+    required String ledgerId,
+    required List<String> envelopeIds,
+    required String description,
+    required DateTime at,
+  }) async {
+    for (final envId in envelopeIds.toSet()) {
+      // 上浮：已存在（复合主键冲突）则只更新时刻，不存在则插入
+      await _db
+          .into(_db.descriptionHistory)
+          .insertOnConflictUpdate(
+            db.DescriptionHistoryCompanion.insert(
+              ledgerId: ledgerId,
+              envelopeId: envId,
+              description: description,
+              lastUsedAt: at,
+            ),
+          );
+      // 淘汰：超过上限时删最旧的，保留最近 N 条
+      final rows = await (_db.select(_db.descriptionHistory)
+            ..where(
+              (h) => h.ledgerId.equals(ledgerId) & h.envelopeId.equals(envId),
+            )
+            ..orderBy([(h) => OrderingTerm.desc(h.lastUsedAt)]))
+          .get();
+      if (rows.length > kDescriptionHistoryLimit) {
+        final doomed = rows
+            .skip(kDescriptionHistoryLimit)
+            .map((r) => r.description)
+            .toList();
+        await (_db.delete(_db.descriptionHistory)
+              ..where(
+                (h) =>
+                    h.ledgerId.equals(ledgerId) &
+                    h.envelopeId.equals(envId) &
+                    h.description.isIn(doomed),
+              ))
+            .go();
+      }
+    }
   }
 
   // ── 设置 ───────────────────────────────────
@@ -724,7 +871,7 @@ class AppRepository {
 
   // ── 数据变动信号（自动备份的触发源，v1.2.x 票 02 · ADR-0018）──────
 
-  /// 监听全库数据变动（账本/信封/流水/设置四表）。drift 按事务提交原子通知：
+  /// 监听全库数据变动（账本/信封/流水/设置/描述历史五表）。drift 按事务提交原子通知：
   /// 一次编辑交易（撤旧 + 记新）只产生一次事件——自动备份防抖以此为「一次变动」。
   Stream<Set<TableUpdate>> watchDataChanges() {
     return _db.tableUpdates(
@@ -733,6 +880,7 @@ class AppRepository {
         _db.envelopes,
         _db.transactions,
         _db.appSettings,
+        _db.descriptionHistory,
       ]),
     );
   }
@@ -747,6 +895,7 @@ class AppRepository {
     final envelopes = await (_db.select(_db.envelopes)).get();
     final txns = await (_db.select(_db.transactions)).get();
     final settings = await (_db.select(_db.appSettings)).get();
+    final history = await (_db.select(_db.descriptionHistory)).get();
     final map = <String, dynamic>{
       'app': '金打细算',
       'schemaVersion': _db.schemaVersion,
@@ -760,6 +909,8 @@ class AppRepository {
       'envelopes': envelopes.map((r) => r.toJson()).toList(),
       'transactions': txns.map((r) => r.toJson()).toList(),
       'appSettings': settings.map((r) => r.toJson()).toList(),
+      // v5 起随备份走（ADR-0020）；旧版本恢复端读到缺失键 → 空历史
+      'descriptionHistory': history.map((r) => r.toJson()).toList(),
     };
     return const JsonEncoder.withIndent('  ').convert(map);
   }
@@ -820,10 +971,15 @@ class AppRepository {
             ),
           )
           .toList();
+      // 描述历史：v4 及更早的备份没有这个键 → 空列表（历史从零积累，ADR-0020）
+      final history = (map['descriptionHistory'] as List? ?? const [])
+          .map((m) => db.DescriptionHistoryData.fromJson(m as Map<String, dynamic>))
+          .toList();
 
       await _db.transaction(() async {
         // 关键步骤：先清空再整体写回（外键顺序：流水 → 信封 → 设置 → 账本）
         await _db.delete(_db.transactions).go();
+        await _db.delete(_db.descriptionHistory).go();
         await _db.delete(_db.envelopes).go();
         await _db.delete(_db.appSettings).go();
         await _db.delete(_db.ledgers).go();
@@ -832,6 +988,7 @@ class AppRepository {
           b.insertAll(_db.envelopes, envelopes);
           b.insertAll(_db.transactions, txns);
           b.insertAll(_db.appSettings, settings);
+          b.insertAll(_db.descriptionHistory, history);
         });
       });
     } on BackupRestoreException {
