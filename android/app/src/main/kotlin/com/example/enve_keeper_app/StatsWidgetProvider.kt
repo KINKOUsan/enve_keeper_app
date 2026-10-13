@@ -5,7 +5,6 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
@@ -60,7 +59,7 @@ class StatsWidgetProvider : AppWidgetProvider() {
             WidgetStyleHelper.apply(
                 views, data, widgetId, "#F0E8DB",
                 intArrayOf(R.id.label, R.id.v0, R.id.v1, R.id.v2),
-                bgMaxLongSide = 540,
+                bgMaxLongSide = 432,
             )
             views.setTextViewText(
                 R.id.label,
@@ -93,8 +92,10 @@ class StatsWidgetProvider : AppWidgetProvider() {
         WidgetStyleHelper.apply(
             views, data, widgetId, "#8A8278",
             intArrayOf(R.id.label, R.id.v0, R.id.v1, R.id.v2),
-            // 540 同信封卡：ColorOS 桌面位图红线，bg+图表总量实测 1.73MB 可达
-            bgMaxLongSide = 540,
+            // 432 同信封卡：本卡 bg+图表+进度条三图同包，总量必须压进
+            // ColorOS 的单次更新位图预算（17 实测 1.32 过 / 1.9 拒，见
+            // WidgetStyleHelper 注释）——432 时 bg+图表+条 ≈ 1.0MB
+            bgMaxLongSide = 432,
         )
         views.setViewVisibility(R.id.l0, View.VISIBLE)
         views.setViewVisibility(R.id.l1, View.VISIBLE)
@@ -118,7 +119,7 @@ class StatsWidgetProvider : AppWidgetProvider() {
         views.setTextViewText(R.id.v2, data.getString("sw.$widgetId.left", null) ?: "")
         val barPath = data.getString("sw.$widgetId.bar", null)
         val bar = barPath?.let { File(it) }?.takeIf { it.exists() }
-            ?.let { WidgetStyleHelper.decodeScaled(it, maxLongSide = 800) }
+            ?.let { WidgetStyleHelper.decodeScaled(it, maxLongSide = 640) }
         if (bar != null) {
             views.setImageViewBitmap(R.id.progress, bar)
             views.setViewVisibility(R.id.progress, View.VISIBLE)
@@ -126,9 +127,13 @@ class StatsWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.progress, View.GONE)
         }
 
-        // 可视化位图（环形/柱状，Flutter 预渲染推送的文件路径）
+        // 可视化位图（环形/柱状，Flutter 预渲染推送的文件路径）。
+        // ⚠️ 必须降采样：源图 720 长边解码即 1.17MB，加 bg/进度条会顶破
+        // ColorOS 的单次更新位图预算（整包被拒，表现为图表/背景全不更新）
         val chartPath = data.getString("sw.$widgetId.chart", null)
-        val chart = chartPath?.let { BitmapFactory.decodeFile(it) }
+        val chart = chartPath?.let {
+            WidgetStyleHelper.decodeScaled(File(it), maxLongSide = 512)
+        }
         if (chart != null) {
             views.setImageViewBitmap(R.id.chart, chart)
             views.setViewVisibility(R.id.chart, View.VISIBLE)

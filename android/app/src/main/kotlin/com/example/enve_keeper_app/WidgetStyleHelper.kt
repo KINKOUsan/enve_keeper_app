@@ -69,10 +69,16 @@ object WidgetStyleHelper {
      * 服务侧 views_bitmap_memory=4.2MB 但桌面仍显示回落纯色）。末段按比例
      * 精确缩放把长边做实到 [maxLongSide]。
      *
-     * ColorOS 红线实测（一加，ColorOS 15 / Android 16，2026-10-13）：
-     * 单卡更新 ≤1.2MB（信封 540²）与总量 1.73MB（统计卡 bg+图表）均正常
-     * 应用；4.2MB 整包被拒。发货值 540 留 ~3× 余量；若未来用户反馈同类
-     * 「部分生效」，先查 dumpsys appwidget 的 views_bitmap_memory。
+     * ColorOS 红线实测（2026-10-13，两台真机）——**限的是单次更新的位图
+     * 总量，不是单张图**：
+     * - ColorOS 15（一加）：总量 1.73MB 可达、4.2MB 拒；
+     * - ColorOS 17（Find X9）：信封 bg1.11MB+图标 ≈1.15MB 过、统计
+     *   图表+进度条 ≈1.32MB 过、**bg+图表+进度条 ≈1.9MB 拒**——统计卡
+     *   一旦设背景整包被拒，卡片冻结在上一次无背景的成功渲染（图表
+     *   看得见是旧更新遗产，极具迷惑性）。阈值约 1.4～1.9MB，各代不同、
+     * 不公开。发货值按「两卡总量 ≤1.0MB」控制：信封 bg 432 + 统计
+     * bg 432/图表 512/进度条 640。诊断口诀不变：views_bitmap_memory
+     * 大而桌面显示旧渲染 = 推送送达、桌面拒收。MIUI 无此红线。
      */
     fun decodeScaled(file: File, maxLongSide: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
