@@ -3,6 +3,7 @@
 // 手写使用说明风格起草的草稿，见 copy.dart 对应注释——用户逐字改定前不算
 // 定稿（票 07 验收项）。
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,6 +36,11 @@ class _WidgetGuidePageState extends ConsumerState<WidgetGuidePage> {
   // 统计卡实例的可视化配置（widgetId → 'ring'/'bars'，显示名用）
   final Map<int, String?> _chartConfig = {};
 
+  // 各实例的背景图状态（widgetId → '已设置'/'未设置'/'文件丢失'）。
+  // 诊断用短标签：远程排查「背景图不生效」时让用户截图本列表即可分辨
+  // 键/文件层（这里显示异常）与桌面渲染层（这里正常但桌面仍不显示）。
+  final Map<int, String> _bgStatus = {};
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +57,7 @@ class _WidgetGuidePageState extends ConsumerState<WidgetGuidePage> {
     }
     final primary = <int, String?>{};
     final charts = <int, String?>{};
+    final bgStatus = <int, String>{};
     for (final w in widgets) {
       final id = w.androidWidgetId;
       if (id == null) continue;
@@ -67,6 +74,14 @@ class _WidgetGuidePageState extends ConsumerState<WidgetGuidePage> {
             EnvelopeCardKeys.statsChart(id),
           );
         }
+        final bgPath = await HomeWidget.getWidgetData<String>(
+          EnvelopeCardKeys.background(id),
+        );
+        bgStatus[id] = (bgPath == null || bgPath.isEmpty)
+            ? '未设置'
+            : File(bgPath).existsSync()
+            ? '已设置'
+            : '文件丢失';
       } on Exception {
         primary[id] = null;
       }
@@ -80,6 +95,9 @@ class _WidgetGuidePageState extends ConsumerState<WidgetGuidePage> {
       _chartConfig
         ..clear()
         ..addAll(charts);
+      _bgStatus
+        ..clear()
+        ..addAll(bgStatus);
     });
   }
 
@@ -174,6 +192,7 @@ class _WidgetGuidePageState extends ConsumerState<WidgetGuidePage> {
             widgetId: w.androidWidgetId!,
             isStats: (w.androidClassName ?? '').contains('StatsWidgetProvider'),
             displayName: _displayName(w.androidWidgetId!, envelopes),
+            bgStatus: _bgStatus[w.androidWidgetId!],
             onTap: () async {
               await Navigator.of(context).push(
                 AppPageRoute<void>(
@@ -258,18 +277,20 @@ class _GuideCard extends StatelessWidget {
   }
 }
 
-// 实例行：卡片图标 + 「卡片类型 · 主配置」+ 箭头
+// 实例行：卡片图标 + 「卡片类型 · 主配置」+ 背景图诊断短标签 + 箭头
 class _InstanceRow extends StatelessWidget {
   const _InstanceRow({
     required this.widgetId,
     required this.isStats,
     required this.displayName,
     required this.onTap,
+    this.bgStatus,
   });
 
   final int widgetId;
   final bool isStats;
   final String displayName;
+  final String? bgStatus;
   final VoidCallback onTap;
 
   @override
@@ -296,13 +317,29 @@ class _InstanceRow extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                '${isStats ? '统计卡片' : '信封卡片'} · $displayName',
-                style: const TextStyle(
-                  fontSize: T.typeBase,
-                  fontWeight: FontWeight.w500,
-                  color: T.textPrimary,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${isStats ? '统计卡片' : '信封卡片'} · $displayName',
+                    style: const TextStyle(
+                      fontSize: T.typeBase,
+                      fontWeight: FontWeight.w500,
+                      color: T.textPrimary,
+                    ),
+                  ),
+                  if (bgStatus != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '#$widgetId · 背景图 $bgStatus',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: T.textTertiary,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             const Icon(Icons.chevron_right, size: 16, color: T.textTertiary),
