@@ -61,6 +61,7 @@ class StatsWidgetProvider : AppWidgetProvider() {
             WidgetStyleHelper.apply(
                 views, data, widgetId, "#F0E8DB",
                 intArrayOf(R.id.label, R.id.v0, R.id.v1, R.id.v2),
+                bgMaxLongSide = 540,
             )
             views.setTextViewText(
                 R.id.label,
@@ -93,6 +94,8 @@ class StatsWidgetProvider : AppWidgetProvider() {
         WidgetStyleHelper.apply(
             views, data, widgetId, "#8A8278",
             intArrayOf(R.id.label, R.id.v0, R.id.v1, R.id.v2),
+            // 540 同信封卡：ColorOS 桌面位图红线，bg+图表总量实测 1.73MB 可达
+            bgMaxLongSide = 540,
         )
         views.setViewVisibility(R.id.l0, View.VISIBLE)
         views.setViewVisibility(R.id.l1, View.VISIBLE)
