@@ -14,7 +14,6 @@ import android.net.Uri
 import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
-import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetPlugin
 
 /**
@@ -92,8 +91,8 @@ class EnvelopeWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.hint, View.VISIBLE)
             views.setOnClickPendingIntent(
                 R.id.root,
-                HomeWidgetLaunchIntent.getActivity(
-                    context, MainActivity::class.java,
+                WidgetLaunchIntents.mainActivityPendingIntent(
+                    context,
                     Uri.parse("envekeeper://widget-edit?id=$widgetId"),
                 ),
             )

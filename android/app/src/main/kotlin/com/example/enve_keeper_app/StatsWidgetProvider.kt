@@ -9,7 +9,6 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
-import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetPlugin
 import java.io.File
 import kotlin.math.ceil
@@ -82,8 +81,8 @@ class StatsWidgetProvider : AppWidgetProvider() {
             views.setTextColor(R.id.l1, Color_GreyText)
             views.setOnClickPendingIntent(
                 R.id.root,
-                HomeWidgetLaunchIntent.getActivity(
-                    context, MainActivity::class.java,
+                WidgetLaunchIntents.mainActivityPendingIntent(
+                    context,
                     Uri.parse("envekeeper://widget-edit?id=$widgetId"),
                 ),
             )
@@ -141,8 +140,8 @@ class StatsWidgetProvider : AppWidgetProvider() {
         // 占位态上方已单独挂 widget-edit
         views.setOnClickPendingIntent(
             R.id.root,
-            HomeWidgetLaunchIntent.getActivity(
-                context, MainActivity::class.java,
+            WidgetLaunchIntents.mainActivityPendingIntent(
+                context,
                 Uri.parse("envekeeper://open-stats"),
             ),
         )

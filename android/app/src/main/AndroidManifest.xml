@@ -3,12 +3,14 @@
         android:label="${appName}"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        <!-- 竖屏锁定：不跟随系统旋转（DESIGN.md §1），从启动第一帧生效 -->
+        <!-- 竖屏锁定：不跟随系统旋转（DESIGN.md §1），从启动第一帧生效。
+             ⚠️ 勿设 taskAffinity=""：组件深链按 affinity 归位同一任务，
+             「无户口」会让每次组件点击新开一个窗口（各带一套页面记录），
+             表现为后台多窗口 + 点统计卡串回编辑页（261013 修复） -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:screenOrientation="portrait"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
