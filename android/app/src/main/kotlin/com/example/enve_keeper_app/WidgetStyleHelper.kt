@@ -45,6 +45,12 @@ object WidgetStyleHelper {
         )
         val bg = bgFile?.let { decodeScaled(it, maxLongSide = bgMaxLongSide) }
         if (bg != null) {
+            // 先中和历史滤镜再放位图：复用控件树的桌面（ColorOS 17 实锤）会把
+            // 上一次「无背景」更新留下的不透明 colorFilter 套到新位图上——照片
+            // 被纯色滤镜整个糊死，表现为「设背景不生效」（装包重绑 = 全新
+            // inflate 无滤镜，所以能显示；「直接换图」上次也是位图所以成功）。
+            // setColorFilter(0) = 全透明 SRC_ATOP，视觉空操作，专职洗掉旧滤镜
+            views.setInt(R.id.bg, "setColorFilter", 0)
             views.setImageViewBitmap(R.id.bg, bg)
         } else {
             views.setInt(R.id.bg, "setColorFilter", Color.parseColor(defaultBgColor))
@@ -69,18 +75,18 @@ object WidgetStyleHelper {
      * 服务侧 views_bitmap_memory=4.2MB 但桌面仍显示回落纯色）。末段按比例
      * 精确缩放把长边做实到 [maxLongSide]。
      *
-     * ColorOS 红线实测（2026-10-13/14，两台真机三轮迭代）——**限的是
-     * 单张位图的体积**（总量论已被换图实验推翻：换图推送总量 1.06MB 成功、
-     * 设图推送总量 0.79MB 反而失败，两者唯一差异是最大单张 0.46 vs 0.75）：
-     * - ColorOS 17（Find X9）：单张 ≈0.46MB 过 / ≈0.75MB 拒；装包重绑
-     *   路径不受此限（1.11MB 也能显示），只有保存触发的推送路径受限；
-     * - ColorOS 15（一加）：阈值更宽（1.2MB 推送可达），但同一序列性
-     *   复现「清除后设图失败」，保守按 17 处理。
-     * 发货值按「单张 ≤0.41MB」控制：信封 bg 320（1:1）/ 统计 bg 448
-     * （2:1）/ 图表 448 / 进度条 640（细条）。另：保存路径曾同时走广播
-     * +直调双通道毫秒级连发两次同内容大包裹，疑似加剧桌面丢更新，已
-     * 收敛为仅直调。诊断口诀不变：views_bitmap_memory 大而桌面显示旧
-     * 渲染 = 推送送达、桌面拒收。MIUI 无此红线。
+     * ColorOS 位图兼容实测（2026-10-13/14，三轮迭代）：
+     * - 真凶（17 实锤）：**复用控件树的桌面会把旧 colorFilter 套到新位图上**
+     *   ——「设背景不生效」= 照片被上一次无背景更新留下的不透明滤镜糊死，
+     *   与图片大小无关（0.41MB 也失败）。修复 = 位图前先 setColorFilter(0)
+     *   洗掉旧滤镜（视觉空操作）；装包重绑全新 inflate 所以能显示、
+     *   「直接换图」上次也是位图所以一直成功。
+     * - 次要红线（15 实锤）：单次推送位图总量仍有上限（1.2MB 过 / 4.2MB
+     *   拒），发货值按单张 ≤0.41MB / 总量 ≤1.0MB 控制：信封 bg 320（1:1）、
+     *   统计 bg 448（2:1）、图表 448、进度条 640。
+     * - 保存路径已收敛为仅直调通道（广播+直调连发大包裹疑似加剧丢更新）。
+     * 诊断口诀：views_bitmap_memory 大而桌面显示旧渲染 = 推送送达、
+     * 桌面拒收/糊死。MIUI 无此红线（每次全量重建控件树）。
      */
     fun decodeScaled(file: File, maxLongSide: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
