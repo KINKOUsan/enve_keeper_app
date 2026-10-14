@@ -59,7 +59,7 @@ class StatsWidgetProvider : AppWidgetProvider() {
             WidgetStyleHelper.apply(
                 views, data, widgetId, "#F0E8DB",
                 intArrayOf(R.id.label, R.id.v0, R.id.v1, R.id.v2),
-                bgMaxLongSide = 448,
+                bgMaxLongSide = 512,
             )
             views.setTextViewText(
                 R.id.label,
@@ -92,9 +92,9 @@ class StatsWidgetProvider : AppWidgetProvider() {
         WidgetStyleHelper.apply(
             views, data, widgetId, "#8A8278",
             intArrayOf(R.id.label, R.id.v0, R.id.v1, R.id.v2),
-            // 448（2:1 图 ≈0.40MB/张）：单图压 0.4MB 档（17 实测 0.46 过 /
-            // 0.75 拒），bg+图表+条三图总量 ≈0.9MB 亦低于已知通过值
-            bgMaxLongSide = 448,
+            // 512（2:1 ≈0.52MB/张）：滤镜修复后按总量控制——bg+图表+条
+            // ≈1.0MB，低于 15 实测通过值（1.2MB）与 17 实测通过值（1.06MB）
+            bgMaxLongSide = 512,
         )
         views.setViewVisibility(R.id.l0, View.VISIBLE)
         views.setViewVisibility(R.id.l1, View.VISIBLE)
@@ -131,7 +131,7 @@ class StatsWidgetProvider : AppWidgetProvider() {
         // ColorOS 的单次更新位图预算（整包被拒，表现为图表/背景全不更新）
         val chartPath = data.getString("sw.$widgetId.chart", null)
         val chart = chartPath?.let {
-            WidgetStyleHelper.decodeScaled(File(it), maxLongSide = 448)
+            WidgetStyleHelper.decodeScaled(File(it), maxLongSide = 512)
         }
         if (chart != null) {
             views.setImageViewBitmap(R.id.chart, chart)

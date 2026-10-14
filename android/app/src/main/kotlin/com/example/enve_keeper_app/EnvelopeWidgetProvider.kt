@@ -73,10 +73,10 @@ class EnvelopeWidgetProvider : AppWidgetProvider() {
             WidgetStyleHelper.apply(
                 views, data, widgetId, "#F0E8DB",
                 intArrayOf(R.id.name, R.id.amount, R.id.hint),
-                // 320（≈0.41MB/张）：ColorOS 限的是单张位图体积——17 实测
-                // 0.46MB 过 / 0.75MB 拒（总量论已被换图实验推翻，见
-                // WidgetStyleHelper 注释），全部单图压到 0.4MB 档
-                bgMaxLongSide = 320,
+                // 480（1:1 ≈0.92MB/张）：滤镜修复后体积不再是主约束，取
+                // realme/15 真机实测推送可达的档位（1.2MB 过 / 4.2MB 拒，
+                // 见 WidgetStyleHelper 注释），兼顾清晰度
+                bgMaxLongSide = 480,
             )
             views.setTextViewText(
                 R.id.name,
@@ -106,7 +106,7 @@ class EnvelopeWidgetProvider : AppWidgetProvider() {
             data.getString("envelope.$binding.color", null) ?: "#C77D70",
             intArrayOf(R.id.name, R.id.amount, R.id.hint),
             // 同上：432 保交付
-            bgMaxLongSide = 320,
+            bgMaxLongSide = 480,
         )
         views.setTextViewText(R.id.name, name)
         views.setViewVisibility(R.id.name, View.VISIBLE)
