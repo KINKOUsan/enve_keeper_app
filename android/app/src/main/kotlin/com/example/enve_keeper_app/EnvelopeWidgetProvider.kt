@@ -73,9 +73,10 @@ class EnvelopeWidgetProvider : AppWidgetProvider() {
             WidgetStyleHelper.apply(
                 views, data, widgetId, "#F0E8DB",
                 intArrayOf(R.id.name, R.id.amount, R.id.hint),
-                // 432（≈0.75MB）：ColorOS 桌面对单次更新的**位图总量**有预算线
-                // （17 实测 1.32MB 过 / 1.9MB 拒），给统计卡那种多图组件也留足余量
-                bgMaxLongSide = 432,
+                // 320（≈0.41MB/张）：ColorOS 限的是单张位图体积——17 实测
+                // 0.46MB 过 / 0.75MB 拒（总量论已被换图实验推翻，见
+                // WidgetStyleHelper 注释），全部单图压到 0.4MB 档
+                bgMaxLongSide = 320,
             )
             views.setTextViewText(
                 R.id.name,
@@ -105,7 +106,7 @@ class EnvelopeWidgetProvider : AppWidgetProvider() {
             data.getString("envelope.$binding.color", null) ?: "#C77D70",
             intArrayOf(R.id.name, R.id.amount, R.id.hint),
             // 同上：432 保交付
-            bgMaxLongSide = 432,
+            bgMaxLongSide = 320,
         )
         views.setTextViewText(R.id.name, name)
         views.setViewVisibility(R.id.name, View.VISIBLE)

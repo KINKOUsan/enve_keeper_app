@@ -168,13 +168,10 @@ class _WidgetEditPageState extends ConsumerState<WidgetEditPage> {
       );
       // 统计卡的数字与位图由同步控制器按新配置现算（配置版本触发重推）
       ref.read(widgetConfigRevProvider.notifier).bump();
-      // qualifiedAndroidName 按 namespace 定位（debug 变体 applicationId 加后缀）
-      await HomeWidget.updateWidget(
-        qualifiedAndroidName: _isStats
-            ? 'com.example.enve_keeper_app.StatsWidgetProvider'
-            : 'com.example.enve_keeper_app.EnvelopeWidgetProvider',
-      );
-      // 直调刷新双保险（票 12）：广播在 MIUI 上偶发不落地，binder 直调重画
+      // 只走直调通道（票 12 引入，MIUI/ColorOS 真机均验证可达）：广播+
+      // 直调曾毫秒级连发两次同内容包裹，小更新无事、带位图的大更新疑似被
+      // ColorOS 桌面当连发丢弃（261014：清除背景生效、设背景不生效的
+      // 嫌疑帮凶），收敛为单次推送
       await refreshWidgetsDirect();
     } on Exception {
       // 平台不可用：不阻塞退出（真机上不会走到）
